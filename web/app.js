@@ -373,9 +373,10 @@ function renderInbox() {
 // =========================================
 
 async function initAccount() {
-    // Check URL auth
+    // Check URL params
     const params = new URLSearchParams(window.location.search);
     const auth = params.get('auth');
+    const initialPage = params.get('page') || 'mail';
 
     if (auth) {
         try {
@@ -389,7 +390,12 @@ async function initAccount() {
                 state.account = { email, password, token: authResponse.token };
                 saveAccount(state.account);
                 window.history.replaceState({}, document.title, window.location.pathname);
-                showToast('Email loaded!', 'success');
+                showToast('Synced from Telegram!', 'success');
+
+                // Navigate to requested page (usually inbox from bot)
+                if (initialPage === 'inbox') {
+                    navigateTo('inbox');
+                }
             }
         } catch (e) {
             console.log('Auth from URL failed, creating new');

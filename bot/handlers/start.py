@@ -1,5 +1,6 @@
 """Start command handler - Auto-generates email on /start."""
 
+import base64
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ContextTypes
@@ -9,6 +10,9 @@ from ..database.storage import storage, UserSession
 from ..utils.helpers import generate_username, generate_password, format_timestamp
 
 logger = logging.getLogger(__name__)
+
+# Mini App URL (GitHub Pages)
+MINI_APP_URL = "https://mohdakil2426.github.io/TempHiveBot"
 
 
 # Persistent keyboard at bottom
@@ -24,6 +28,12 @@ def get_persistent_keyboard():
         resize_keyboard=True,
         is_persistent=True
     )
+
+
+def get_mini_app_url(email: str, password: str, page: str = "inbox") -> str:
+    """Generate Mini App URL with auth credentials."""
+    credentials = base64.urlsafe_b64encode(f"{email}:{password}".encode()).decode()
+    return f"{MINI_APP_URL}/?auth={credentials}&page={page}"
 
 
 async def show_email_status(update_or_message, session, context: ContextTypes.DEFAULT_TYPE, is_callback: bool = False):
@@ -52,9 +62,10 @@ async def show_email_status(update_or_message, session, context: ContextTypes.DE
         else:
             text += "Your inbox is empty"
         
-        # Create inline keyboard - use callback instead of URL for "Open in Browser"
+        # Create inline keyboard with Mini App URL
+        mini_app_url = get_mini_app_url(session.email, session.password, "inbox")
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("Open in Browser ➡️", callback_data="open_browser")]
+            [InlineKeyboardButton("📱 Open Mini App", url=mini_app_url)]
         ])
         
         if is_callback:
@@ -81,7 +92,7 @@ async def show_email_status(update_or_message, session, context: ContextTypes.DE
             logger.error(f"Token refresh failed: {refresh_error}")
             error_text = "Current email address: (expired)\n\nYour inbox is empty"
             keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("Open in Browser ➡️", callback_data="open_browser")]
+                [InlineKeyboardButton("📱 Open Mini App", url=MINI_APP_URL)]
             ])
             if is_callback:
                 await update_or_message.edit_text(error_text, reply_markup=keyboard)
@@ -173,7 +184,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 How to use:
 • On /start you get a temporary email
-• Click "Open in Browser" to view inbox in web
+• Click "Open Mini App" to view inbox
 • Use buttons below to manage your email
 
 Bottom Buttons:

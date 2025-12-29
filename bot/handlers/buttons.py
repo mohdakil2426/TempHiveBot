@@ -1,4 +1,4 @@
-"""Message handlers for persistent keyboard buttons and callbacks."""
+"""Message handlers for persistent keyboard buttons."""
 
 import logging
 from telegram import Update
@@ -35,7 +35,7 @@ async def handle_generate_new(update: Update, context: ContextTypes.DEFAULT_TYPE
         session = await create_new_email(user_id)
         await storage.save_user(session)
         
-        # Show confirmation and new email status directly (no loading message)
+        # Show confirmation and new email status directly
         await update.message.reply_text(
             "✅ New email generated! Old email deleted.",
             reply_markup=get_persistent_keyboard()
@@ -73,24 +73,6 @@ async def handle_refresh(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     # Show email status (this will refresh the inbox)
     await show_email_status(update.message, session, context)
-
-
-async def handle_open_browser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle 'Open in Browser' button callback - just acknowledge."""
-    query = update.callback_query
-    # Just answer the callback without sending any message
-    await query.answer("Visit http://localhost:8000 in your browser", show_alert=True)
-
-
-async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle all callback queries from inline buttons."""
-    query = update.callback_query
-    callback_data = query.data
-    
-    if callback_data == "open_browser":
-        await handle_open_browser(update, context)
-    else:
-        await query.answer("Unknown action")
 
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
