@@ -536,18 +536,81 @@ async function openEmail(id) {
         const senderEmail = message.from?.address || 'Unknown';
 
         // Populate Modal
-        // elements.detailAvatar TODO: set color or initial
+        elements.detailAvatar.textContent = getInitial(senderEmail);
         elements.detailSender.textContent = senderName || senderEmail.split('@')[0];
         elements.detailFrom.textContent = senderEmail;
         elements.detailDate.textContent = formatDate(message.createdAt);
         elements.detailSubject.textContent = message.subject || '(No Subject)';
 
-        let content = message.text || '';
-        if (!content && message.html) {
-            const htmlContent = Array.isArray(message.html) ? message.html[0] : message.html;
-            content = stripHtml(htmlContent);
+        // Handle Body Content - Prioritize HTML
+        const htmlSource = Array.isArray(message.html) ? message.html[0] : message.html;
+
+        if (htmlSource) {
+            // Render HTML
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlSource, 'text/html');
+
+            // Remove scripts
+            doc.querySelectorAll('script').forEach(el => el.remove());
+
+            // External links
+            doc.querySelectorAll('a').forEach(el => {
+                el.setAttribute('target', '_blank');
+                el.setAttribute('rel', 'noopener noreferrer');
+            });
+
+            // Isolate styles using Shadow DOM
+            elements.detailBody.textContent = '';
+            if (!elements.detailBody.shadowRoot) {
+                elements.detailBody.attachShadow({ mode: 'open' });
+            }
+
+            // Style for the shadow root
+            const style = document.createElement('style');
+            style.textContent = `
+                :host { display: block; overflow-x: auto; }
+                body { 
+                    background: transparent !important; 
+                    color: var(--text-primary, #000); 
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    margin: 0; 
+                    padding: 0; 
+                    font-size: 16px;
+                    line-height: 1.5;
+                }
+                img { max-width: 100%; height: auto; }
+                p { margin: 0 0 1em 0; }
+                a { color: var(--accent, #007AFF); }
+            `;
+
+            elements.detailBody.shadowRoot.innerHTML = '';
+            elements.detailBody.shadowRoot.appendChild(style);
+            elements.detailBody.shadowRoot.appendChild(doc.body || doc.documentElement);
+
+        } else {
+            // Fallback to Text
+            const content = message.text || '(No content)';
+            elements.detailBody.textContent = '';
+
+            // Use shadow dom for text too to maintain consistency
+            if (!elements.detailBody.shadowRoot) {
+                elements.detailBody.attachShadow({ mode: 'open' });
+            }
+
+            elements.detailBody.shadowRoot.innerHTML = `
+                <style>
+                    body { 
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+                        font-size: 16px; 
+                        line-height: 1.5; 
+                        color: var(--text-primary, #000); 
+                        white-space: pre-wrap; 
+                        margin: 0; 
+                    }
+                </style>
+                <body>${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</body>
+            `;
         }
-        elements.detailBody.textContent = content || '(No content)';
 
         elements.emailModal.classList.add('active');
         if (tg) tg.BackButton.show();
