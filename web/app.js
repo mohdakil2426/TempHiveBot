@@ -1,34 +1,111 @@
 /**
- * TempMail Web App
- * Uses Mail.tm API directly from the browser
+ * TempMail Mini App
+ * Telegram Mini App for temporary email
  */
 
 const API_BASE = 'https://api.mail.tm';
 
+// =========================================
 // State
-let currentAccount = null;
-let autoRefreshInterval = null;
+// =========================================
 
-// DOM Elements
-const elements = {
-    emailAddress: document.getElementById('email-address'),
-    copyBtn: document.getElementById('copy-btn'),
-    newEmailBtn: document.getElementById('new-email-btn'),
-    refreshBtn: document.getElementById('refresh-btn'),
-    inboxContainer: document.getElementById('inbox-container'),
-    messageCount: document.getElementById('message-count'),
-    modal: document.getElementById('email-modal'),
-    modalSubject: document.getElementById('modal-subject'),
-    modalFrom: document.getElementById('modal-from'),
-    modalDate: document.getElementById('modal-date'),
-    modalBody: document.getElementById('modal-body'),
-    closeModal: document.getElementById('close-modal'),
-    deleteEmailBtn: document.getElementById('delete-email-btn'),
-    toast: document.getElementById('toast'),
-    loading: document.getElementById('loading')
+const state = {
+    currentPage: 'mail',
+    account: null,
+    messages: [],
+    currentMessage: null,
+    isLoading: false,
+    autoRefreshInterval: null
 };
 
-// ===== Utility Functions =====
+// =========================================
+// Telegram Integration
+// =========================================
+
+const tg = window.Telegram?.WebApp;
+
+function initTelegram() {
+    if (!tg) {
+        console.log('Not running in Telegram');
+        return;
+    }
+
+    // Ready
+    tg.ready();
+    tg.expand();
+
+    // Apply theme
+    if (tg.colorScheme === 'dark') {
+        document.body.classList.add('dark');
+    }
+
+    // Back button handler
+    tg.BackButton.onClick(() => {
+        if (document.getElementById('email-modal').classList.contains('active')) {
+            closeModal();
+        } else if (state.currentPage === 'inbox') {
+            navigateTo('mail');
+        }
+    });
+
+    // Haptic feedback helper
+    window.haptic = (type = 'light') => {
+        tg.HapticFeedback?.impactOccurred(type);
+    };
+}
+
+// =========================================
+// DOM Elements
+// =========================================
+
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => document.querySelectorAll(selector);
+
+const elements = {
+    // Pages
+    mailPage: $('#mail-page'),
+    inboxPage: $('#inbox-page'),
+
+    // Mail page
+    emailText: $('#email-text'),
+    copyBtn: $('#copy-btn'),
+    copyFeedback: $('#copy-feedback'),
+    generateBtn: $('#generate-btn'),
+    generateBtnText: $('#generate-btn-text'),
+
+    // Inbox page
+    inboxCount: $('#inbox-count'),
+    inboxList: $('#inbox-list'),
+    emptyState: $('#empty-state'),
+    refreshBtn: $('#refresh-btn'),
+
+    // Email modal
+    emailModal: $('#email-modal'),
+    modalBack: $('#modal-back'),
+    modalDelete: $('#modal-delete'),
+    detailAvatar: $('#detail-avatar'),
+    detailSender: $('#detail-sender'),
+    detailFrom: $('#detail-from'),
+    detailDate: $('#detail-date'),
+    detailSubject: $('#detail-subject'),
+    detailBody: $('#detail-body'),
+
+    // Delete modal
+    deleteModal: $('#delete-modal'),
+    cancelDelete: $('#cancel-delete'),
+    confirmDelete: $('#confirm-delete'),
+
+    // Navigation
+    navItems: $$('.nav-item'),
+    navBadge: $('#nav-badge'),
+
+    // Toast
+    toast: $('#toast')
+};
+
+// =========================================
+// Utilities
+// =========================================
 
 function generateUsername(length = 10) {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -51,14 +128,12 @@ function formatDate(isoString) {
 
     return date.toLocaleDateString('en-US', {
         month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: 'numeric'
     });
 }
 
-function getInitials(email) {
-    return email.charAt(0).toUpperCase();
+function getInitial(email) {
+    return (email?.charAt(0) || '?').toUpperCase();
 }
 
 function stripHtml(html) {
@@ -66,23 +141,17 @@ function stripHtml(html) {
     return doc.body.textContent || '';
 }
 
-function showLoading() {
-    elements.loading.classList.add('active');
-}
-
-function hideLoading() {
-    elements.loading.classList.remove('active');
-}
-
-function showToast(message, type = 'success') {
+function showToast(message, type = '') {
     elements.toast.textContent = message;
     elements.toast.className = `toast ${type} show`;
     setTimeout(() => {
         elements.toast.classList.remove('show');
-    }, 3000);
+    }, 2500);
 }
 
-// ===== Storage =====
+// =========================================
+// Storage
+// =========================================
 
 function saveAccount(account) {
     localStorage.setItem('tempmail_account', JSON.stringify(account));
@@ -97,7 +166,9 @@ function clearAccount() {
     localStorage.removeItem('tempmail_account');
 }
 
-// ===== API Functions =====
+// =========================================
+// API
+// =========================================
 
 async function apiRequest(endpoint, options = {}) {
     const url = `${API_BASE}${endpoint}`;
@@ -106,14 +177,11 @@ async function apiRequest(endpoint, options = {}) {
         ...options.headers
     };
 
-    if (currentAccount?.token) {
-        headers['Authorization'] = `Bearer ${currentAccount.token}`;
+    if (state.account?.token) {
+        headers['Authorization'] = `Bearer ${state.account.token}`;
     }
 
-    const response = await fetch(url, {
-        ...options,
-        headers
-    });
+    const response = await fetch(url, { ...options, headers });
 
     if (response.status === 204) return null;
 
@@ -131,83 +199,62 @@ async function getDomains() {
 }
 
 async function createAccount() {
-    showLoading();
-    try {
-        // Get available domain
-        const domains = await getDomains();
-        const activeDomain = domains.find(d => d.isActive);
+    // Get domain
+    const domains = await getDomains();
+    const activeDomain = domains.find(d => d.isActive);
+    if (!activeDomain) throw new Error('No active domains');
 
-        if (!activeDomain) {
-            throw new Error('No active domains available');
-        }
+    // Generate credentials
+    const username = generateUsername();
+    const password = generatePassword();
+    const email = `${username}@${activeDomain.domain}`;
 
-        // Generate credentials
-        const username = generateUsername();
-        const password = generatePassword();
-        const email = `${username}@${activeDomain.domain}`;
+    // Create account
+    const account = await apiRequest('/accounts', {
+        method: 'POST',
+        body: JSON.stringify({ address: email, password })
+    });
 
-        // Create account
-        const account = await apiRequest('/accounts', {
-            method: 'POST',
-            body: JSON.stringify({ address: email, password })
-        });
+    // Get token
+    const auth = await apiRequest('/token', {
+        method: 'POST',
+        body: JSON.stringify({ address: email, password })
+    });
 
-        // Get token
-        const auth = await apiRequest('/token', {
-            method: 'POST',
-            body: JSON.stringify({ address: email, password })
-        });
-
-        currentAccount = {
-            id: account.id,
-            email: email,
-            password: password,
-            token: auth.token
-        };
-
-        saveAccount(currentAccount);
-        updateEmailDisplay();
-        await refreshInbox();
-
-        showToast('New email created!', 'success');
-
-    } catch (error) {
-        console.error('Error creating account:', error);
-        showToast('Failed to create email. Please try again.', 'error');
-    } finally {
-        hideLoading();
-    }
+    return {
+        id: account.id,
+        email: email,
+        password: password,
+        token: auth.token
+    };
 }
 
 async function refreshToken() {
-    if (!currentAccount) return false;
+    if (!state.account) return false;
 
     try {
         const auth = await apiRequest('/token', {
             method: 'POST',
             body: JSON.stringify({
-                address: currentAccount.email,
-                password: currentAccount.password
+                address: state.account.email,
+                password: state.account.password
             })
         });
-
-        currentAccount.token = auth.token;
-        saveAccount(currentAccount);
+        state.account.token = auth.token;
+        saveAccount(state.account);
         return true;
     } catch (error) {
-        console.error('Token refresh failed:', error);
         return false;
     }
 }
 
 async function getMessages() {
-    if (!currentAccount) return [];
+    if (!state.account) return [];
 
     try {
         const response = await apiRequest('/messages');
         return response['hydra:member'] || [];
     } catch (error) {
-        // Try refreshing token
         if (await refreshToken()) {
             const response = await apiRequest('/messages');
             return response['hydra:member'] || [];
@@ -224,272 +271,370 @@ async function deleteMessage(id) {
     await apiRequest(`/messages/${id}`, { method: 'DELETE' });
 }
 
-// ===== UI Functions =====
+// =========================================
+// Navigation
+// =========================================
+
+function navigateTo(page) {
+    state.currentPage = page;
+
+    // Update pages
+    $$('.page').forEach(p => p.classList.remove('active'));
+    $(`#${page}-page`).classList.add('active');
+
+    // Update nav
+    elements.navItems.forEach(item => {
+        item.classList.toggle('active', item.dataset.page === page);
+    });
+
+    // Telegram back button
+    if (tg) {
+        if (page === 'inbox') {
+            tg.BackButton.show();
+        } else {
+            tg.BackButton.hide();
+        }
+    }
+
+    // Load inbox data if needed
+    if (page === 'inbox') {
+        loadInbox();
+    }
+
+    window.haptic?.('light');
+}
+
+// =========================================
+// UI Updates
+// =========================================
 
 function updateEmailDisplay() {
-    if (currentAccount) {
-        elements.emailAddress.textContent = currentAccount.email;
+    elements.emailText.textContent = state.account?.email || 'Generating...';
+}
+
+function updateInboxCount(count) {
+    elements.inboxCount.textContent = `${count} message${count !== 1 ? 's' : ''}`;
+
+    // Update badge
+    if (count > 0) {
+        elements.navBadge.textContent = count > 99 ? '99+' : count;
+        elements.navBadge.classList.remove('hidden');
     } else {
-        elements.emailAddress.textContent = 'Click "New Email" to generate';
+        elements.navBadge.classList.add('hidden');
     }
 }
 
-function renderInbox(messages) {
-    elements.messageCount.textContent = messages.length;
+function renderInbox() {
+    const messages = state.messages;
+    updateInboxCount(messages.length);
 
     if (messages.length === 0) {
-        elements.inboxContainer.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">📭</div>
-                <p>Your inbox is empty</p>
-                <span>Waiting for emails...</span>
-            </div>
-        `;
+        elements.inboxList.innerHTML = '';
+        elements.emptyState.classList.add('show');
         return;
     }
 
-    elements.inboxContainer.innerHTML = messages.map(msg => {
+    elements.emptyState.classList.remove('show');
+
+    elements.inboxList.innerHTML = messages.map(msg => {
+        const senderName = msg.from?.name || '';
         const senderEmail = msg.from?.address || 'Unknown';
+        const displayName = senderName || senderEmail.split('@')[0];
         const subject = msg.subject || '(No Subject)';
         const preview = msg.intro || '';
         const time = formatDate(msg.createdAt);
-        const initial = getInitials(senderEmail);
+        const initial = getInitial(senderEmail);
         const unreadClass = !msg.seen ? 'unread' : '';
 
         return `
             <div class="email-item ${unreadClass}" data-id="${msg.id}">
                 <div class="email-avatar">${initial}</div>
-                <div class="email-content">
-                    <div class="email-header">
-                        <span class="email-sender">${senderEmail}</span>
+                <div class="email-item-content">
+                    <div class="email-item-header">
+                        <span class="email-sender">${displayName}</span>
                         <span class="email-time">${time}</span>
                     </div>
                     <div class="email-subject">${subject}</div>
                     <div class="email-preview">${preview}</div>
                 </div>
+                ${!msg.seen ? '<div class="unread-dot"></div>' : ''}
             </div>
         `;
     }).join('');
 
     // Add click handlers
-    document.querySelectorAll('.email-item').forEach(item => {
+    $$('.email-item').forEach(item => {
         item.addEventListener('click', () => openEmail(item.dataset.id));
     });
 }
 
-async function refreshInbox() {
-    if (!currentAccount) return;
+// =========================================
+// Actions
+// =========================================
+
+async function initAccount() {
+    // Check URL auth
+    const params = new URLSearchParams(window.location.search);
+    const auth = params.get('auth');
+
+    if (auth) {
+        try {
+            const decoded = atob(auth.replace(/-/g, '+').replace(/_/g, '/'));
+            const [email, password] = decoded.split(':');
+            if (email && password) {
+                const authResponse = await apiRequest('/token', {
+                    method: 'POST',
+                    body: JSON.stringify({ address: email, password })
+                });
+                state.account = { email, password, token: authResponse.token };
+                saveAccount(state.account);
+                window.history.replaceState({}, document.title, window.location.pathname);
+                showToast('Email loaded!', 'success');
+            }
+        } catch (e) {
+            console.log('Auth from URL failed, creating new');
+        }
+    }
+
+    // Load from storage
+    if (!state.account) {
+        state.account = loadAccount();
+    }
+
+    // Verify or create
+    if (state.account) {
+        updateEmailDisplay();
+        try {
+            await getMessages();
+        } catch (error) {
+            console.log('Account expired, creating new');
+            await generateNewEmail();
+        }
+    } else {
+        await generateNewEmail();
+    }
+}
+
+async function generateNewEmail() {
+    if (state.isLoading) return;
+
+    state.isLoading = true;
+    elements.generateBtn.disabled = true;
+    elements.generateBtn.classList.add('loading');
+    elements.generateBtnText.textContent = 'Generating...';
+    elements.emailText.textContent = 'Generating...';
 
     try {
-        const messages = await getMessages();
-        renderInbox(messages);
+        state.account = await createAccount();
+        saveAccount(state.account);
+        updateEmailDisplay();
+        state.messages = [];
+        renderInbox();
+        showToast('New email created!', 'success');
+        window.haptic?.('success');
     } catch (error) {
-        console.error('Error refreshing inbox:', error);
+        console.error('Error creating account:', error);
+        showToast('Failed to create email', 'error');
+        window.haptic?.('error');
+    } finally {
+        state.isLoading = false;
+        elements.generateBtn.disabled = false;
+        elements.generateBtn.classList.remove('loading');
+        elements.generateBtnText.textContent = 'Generate New Email';
+    }
+}
+
+async function loadInbox() {
+    if (state.isLoading) return;
+
+    elements.refreshBtn.classList.add('loading');
+
+    try {
+        state.messages = await getMessages();
+        renderInbox();
+    } catch (error) {
+        console.error('Error loading inbox:', error);
+        showToast('Failed to load inbox', 'error');
+    } finally {
+        elements.refreshBtn.classList.remove('loading');
+    }
+}
+
+async function copyEmail() {
+    if (!state.account) return;
+
+    try {
+        await navigator.clipboard.writeText(state.account.email);
+        elements.copyFeedback.classList.add('show');
+        window.haptic?.('light');
+        setTimeout(() => {
+            elements.copyFeedback.classList.remove('show');
+        }, 2000);
+    } catch (error) {
+        // Fallback
+        const textArea = document.createElement('textarea');
+        textArea.value = state.account.email;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        elements.copyFeedback.classList.add('show');
+        setTimeout(() => {
+            elements.copyFeedback.classList.remove('show');
+        }, 2000);
     }
 }
 
 async function openEmail(id) {
-    showLoading();
+    window.haptic?.('light');
+
     try {
         const message = await getMessage(id);
+        state.currentMessage = message;
 
-        elements.modalSubject.textContent = message.subject || '(No Subject)';
-        elements.modalFrom.textContent = message.from?.address || 'Unknown';
-        elements.modalDate.textContent = formatDate(message.createdAt);
+        const senderName = message.from?.name || '';
+        const senderEmail = message.from?.address || 'Unknown';
 
-        // Get content (prefer text, fallback to HTML)
+        elements.detailAvatar.textContent = getInitial(senderEmail);
+        elements.detailSender.textContent = senderName || senderEmail.split('@')[0];
+        elements.detailFrom.textContent = senderEmail;
+        elements.detailDate.textContent = formatDate(message.createdAt);
+        elements.detailSubject.textContent = message.subject || '(No Subject)';
+
+        // Get body content
         let content = message.text || '';
         if (!content && message.html) {
             const htmlContent = Array.isArray(message.html) ? message.html[0] : message.html;
             content = stripHtml(htmlContent);
         }
+        elements.detailBody.textContent = content || '(No content)';
 
-        elements.modalBody.textContent = content || '(No content)';
-        elements.deleteEmailBtn.dataset.id = id;
+        // Show modal
+        elements.emailModal.classList.add('active');
 
-        elements.modal.classList.add('active');
+        // Show back button
+        if (tg) {
+            tg.BackButton.show();
+        }
 
         // Mark as read locally
-        document.querySelector(`.email-item[data-id="${id}"]`)?.classList.remove('unread');
+        const item = $(`.email-item[data-id="${id}"]`);
+        if (item) {
+            item.classList.remove('unread');
+            item.querySelector('.unread-dot')?.remove();
+        }
 
     } catch (error) {
-        console.error('Error opening email:', error);
+        console.error('Error loading email:', error);
         showToast('Failed to load email', 'error');
-    } finally {
-        hideLoading();
     }
 }
 
-function closeEmailModal() {
-    elements.modal.classList.remove('active');
+function closeModal() {
+    elements.emailModal.classList.remove('active');
+    elements.deleteModal.classList.remove('active');
+    state.currentMessage = null;
+
+    // Update back button
+    if (tg && state.currentPage === 'mail') {
+        tg.BackButton.hide();
+    }
 }
 
-async function handleDeleteEmail() {
-    const id = elements.deleteEmailBtn.dataset.id;
-    if (!id) return;
+function showDeleteConfirm() {
+    elements.deleteModal.classList.add('active');
+    window.haptic?.('warning');
+}
 
-    showLoading();
+async function confirmDeleteEmail() {
+    if (!state.currentMessage) return;
+
     try {
-        await deleteMessage(id);
-        closeEmailModal();
-        await refreshInbox();
+        await deleteMessage(state.currentMessage.id);
+
+        // Remove from list
+        state.messages = state.messages.filter(m => m.id !== state.currentMessage.id);
+        renderInbox();
+
+        closeModal();
         showToast('Email deleted', 'success');
+        window.haptic?.('success');
     } catch (error) {
         console.error('Error deleting email:', error);
         showToast('Failed to delete email', 'error');
-    } finally {
-        hideLoading();
     }
 }
 
-async function copyEmail() {
-    if (!currentAccount) return;
-
-    try {
-        await navigator.clipboard.writeText(currentAccount.email);
-        showToast('Email copied to clipboard!', 'success');
-    } catch (error) {
-        // Fallback
-        const textArea = document.createElement('textarea');
-        textArea.value = currentAccount.email;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        showToast('Email copied!', 'success');
-    }
-}
-
-// ===== Auto Refresh =====
+// =========================================
+// Auto Refresh
+// =========================================
 
 function startAutoRefresh() {
     stopAutoRefresh();
-    autoRefreshInterval = setInterval(async () => {
-        if (currentAccount) {
-            await refreshInbox();
+    state.autoRefreshInterval = setInterval(async () => {
+        if (state.currentPage === 'inbox' && !elements.emailModal.classList.contains('active')) {
+            await loadInbox();
         }
-    }, 10000); // Refresh every 10 seconds
+    }, 15000); // 15 seconds
 }
 
 function stopAutoRefresh() {
-    if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-        autoRefreshInterval = null;
+    if (state.autoRefreshInterval) {
+        clearInterval(state.autoRefreshInterval);
+        state.autoRefreshInterval = null;
     }
 }
 
-// ===== Event Listeners =====
+// =========================================
+// Event Listeners
+// =========================================
 
-elements.newEmailBtn.addEventListener('click', createAccount);
-elements.refreshBtn.addEventListener('click', async () => {
-    showLoading();
-    await refreshInbox();
-    hideLoading();
-    showToast('Inbox refreshed', 'success');
-});
-elements.copyBtn.addEventListener('click', copyEmail);
-elements.closeModal.addEventListener('click', closeEmailModal);
-elements.deleteEmailBtn.addEventListener('click', handleDeleteEmail);
+function setupEventListeners() {
+    // Navigation
+    elements.navItems.forEach(item => {
+        item.addEventListener('click', () => navigateTo(item.dataset.page));
+    });
 
-// Close modal on backdrop click
-elements.modal.addEventListener('click', (e) => {
-    if (e.target === elements.modal) {
-        closeEmailModal();
-    }
-});
+    // Mail page
+    elements.copyBtn.addEventListener('click', copyEmail);
+    elements.generateBtn.addEventListener('click', generateNewEmail);
 
-// Close modal on Escape key
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && elements.modal.classList.contains('active')) {
-        closeEmailModal();
-    }
-});
+    // Inbox page
+    elements.refreshBtn.addEventListener('click', loadInbox);
 
-// ===== URL Auth Handling =====
+    // Email modal
+    elements.modalBack.addEventListener('click', closeModal);
+    elements.modalDelete.addEventListener('click', showDeleteConfirm);
+    elements.emailModal.querySelector('.modal-overlay').addEventListener('click', closeModal);
 
-function getAuthFromUrl() {
-    const params = new URLSearchParams(window.location.search);
-    const auth = params.get('auth');
-    if (!auth) return null;
+    // Delete modal
+    elements.cancelDelete.addEventListener('click', () => {
+        elements.deleteModal.classList.remove('active');
+    });
+    elements.confirmDelete.addEventListener('click', confirmDeleteEmail);
+    elements.deleteModal.querySelector('.modal-overlay').addEventListener('click', () => {
+        elements.deleteModal.classList.remove('active');
+    });
 
-    try {
-        // Decode base64 credentials
-        const decoded = atob(auth.replace(/-/g, '+').replace(/_/g, '/'));
-        const [email, password] = decoded.split(':');
-        if (email && password) {
-            return { email, password };
+    // Keyboard
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
         }
-    } catch (e) {
-        console.error('Failed to decode auth:', e);
-    }
-    return null;
+    });
 }
 
-async function loadFromAuth(email, password) {
-    showLoading();
-    try {
-        // Get token for existing account
-        const auth = await apiRequest('/token', {
-            method: 'POST',
-            body: JSON.stringify({ address: email, password })
-        });
-
-        currentAccount = {
-            email: email,
-            password: password,
-            token: auth.token
-        };
-
-        saveAccount(currentAccount);
-        updateEmailDisplay();
-        await refreshInbox();
-
-        showToast('Loaded email from Telegram', 'success');
-
-        // Clear URL params
-        window.history.replaceState({}, document.title, window.location.pathname);
-
-    } catch (error) {
-        console.error('Failed to load auth:', error);
-        showToast('Email session expired. Creating new one...', 'error');
-        await createAccount();
-    } finally {
-        hideLoading();
-    }
-}
-
-// ===== Initialize =====
+// =========================================
+// Initialize
+// =========================================
 
 async function init() {
-    // Check for auth in URL (from Telegram deep link)
-    const urlAuth = getAuthFromUrl();
-
-    if (urlAuth) {
-        // Load account from Telegram
-        await loadFromAuth(urlAuth.email, urlAuth.password);
-    } else {
-        // Try to load existing account from localStorage
-        currentAccount = loadAccount();
-
-        if (currentAccount) {
-            // Verify account still works
-            updateEmailDisplay();
-            try {
-                await refreshInbox();
-            } catch (error) {
-                // Account expired, create new one
-                console.log('Account expired, creating new one');
-                await createAccount();
-            }
-        } else {
-            // Create new account
-            await createAccount();
-        }
-    }
-
-    // Start auto-refresh
+    initTelegram();
+    setupEventListeners();
+    await initAccount();
+    updateEmailDisplay();
     startAutoRefresh();
 }
 
-// Start the app
+// Start app
 init();
