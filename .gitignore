@@ -25,5 +25,5 @@ data/*.db
 Thumbs.db
 
 #project files
-memory-bank/
-docs
+memory-bank
+project_docs
