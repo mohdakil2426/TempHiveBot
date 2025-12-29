@@ -6,7 +6,6 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from .config import BOT_TOKEN, POLL_INTERVAL
 from .handlers import start
-from .handlers.buttons import message_handler
 from .services.notifier import check_new_emails
 from .database.storage import storage
 
@@ -45,9 +44,6 @@ def main():
     # Register command handlers
     application.add_handler(CommandHandler("start", start.start_command))
     application.add_handler(CommandHandler("help", start.help_command))
-    
-    # Register message handler for button presses
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
     
     # Set up background job for checking new emails
     job_queue = application.job_queue
