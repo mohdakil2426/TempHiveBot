@@ -2,7 +2,7 @@
 
 import base64
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 from telegram.ext import ContextTypes
 
 from ..services.mailtm import mailtm_service, MailTMError
@@ -62,10 +62,10 @@ async def show_email_status(update_or_message, session, context: ContextTypes.DE
         else:
             text += "Your inbox is empty"
         
-        # Create inline keyboard with Mini App URL
+        # Create inline keyboard with Mini App WebAppInfo
         mini_app_url = get_mini_app_url(session.email, session.password, "inbox")
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📱 Open Mini App", url=mini_app_url)]
+            [InlineKeyboardButton("📱 Open Mini App", web_app=WebAppInfo(url=mini_app_url))]
         ])
         
         if is_callback:
@@ -92,7 +92,7 @@ async def show_email_status(update_or_message, session, context: ContextTypes.DE
             logger.error(f"Token refresh failed: {refresh_error}")
             error_text = "Current email address: (expired)\n\nYour inbox is empty"
             keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("📱 Open Mini App", url=MINI_APP_URL)]
+                [InlineKeyboardButton("📱 Open Mini App", web_app=WebAppInfo(url=MINI_APP_URL))]
             ])
             if is_callback:
                 await update_or_message.edit_text(error_text, reply_markup=keyboard)

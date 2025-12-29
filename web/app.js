@@ -400,6 +400,10 @@ async function initAccount() {
         } catch (e) {
             console.log('Auth from URL failed, creating new');
         }
+    } else if (tg && !loadAccount()) {
+        // Opened from Telegram menu button without synced email
+        // Show message and create new email for this session
+        showToast('Tip: Use "Open Mini App" button in chat for synced email', 'info');
     }
 
     // Load from storage

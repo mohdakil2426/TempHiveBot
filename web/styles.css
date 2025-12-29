@@ -901,6 +901,11 @@ body {
     color: white;
 }
 
+.toast.info {
+    background: var(--primary);
+    color: white;
+}
+
 /* =========================================
    Utilities
    ========================================= */
