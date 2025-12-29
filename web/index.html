@@ -3,9 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TempMail</title>
-    <meta name="description" content="Instant temporary email - TempMail Mini App">
+    <meta name="description" content="Instant temporary email">
 
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -13,153 +14,243 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
 
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
     <div id="app">
-        <!-- Mail Page -->
-        <div id="mail-page" class="page active">
-            <div class="page-content">
-                <!-- Hero Section -->
-                <div class="hero">
-                    <div class="hero-icon">📧</div>
-                    <h1 class="hero-title">TempMail</h1>
-                    <p class="hero-subtitle">Instant Disposable Email</p>
-                </div>
+        <!-- Main Content Area -->
+        <main class="main-content">
 
-                <!-- Email Card -->
-                <div class="email-card">
-                    <div class="email-card-label">Your Email Address</div>
-                    <div class="email-card-content">
-                        <span id="email-text" class="email-address">Loading...</span>
-                        <button id="copy-btn" class="copy-btn" aria-label="Copy email">
+            <!-- Mail Page -->
+            <div id="mail-page" class="page active">
+                <div class="page-scroll">
+                    <!-- Header -->
+                    <header class="app-header">
+                        <h1 class="app-title">TempMail</h1>
+                        <button class="icon-btn-ghost" id="settings-btn" aria-label="Settings">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                                </path>
+                            </svg>
+                        </button>
+                    </header>
+
+                    <!-- Status Card -->
+                    <div class="status-card glow-effect">
+                        <div class="status-icon-wrapper">
+                            <div class="status-icon">📬</div>
+                            <div class="status-dot"></div>
+                        </div>
+                        <div class="status-info">
+                            <div class="label">Your Temporary Email</div>
+                            <div class="value-row">
+                                <div id="email-text" class="email-value">Generating...</div>
+                            </div>
+                        </div>
+                        <button id="copy-btn" class="action-btn" aria-label="Copy">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                             </svg>
                         </button>
                     </div>
-                    <div id="copy-feedback" class="copy-feedback">✓ Copied!</div>
-                </div>
 
-                <!-- Generate Button -->
-                <button id="generate-btn" class="primary-btn">
-                    <svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2">
-                        <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" />
-                    </svg>
-                    <span id="generate-btn-text">Generate New Email</span>
-                </button>
+                    <!-- Actions -->
+                    <div class="actions-grid">
+                        <button id="generate-btn" class="big-btn primary">
+                            <span class="btn-content">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path>
+                                    <line x1="16" y1="5" x2="22" y2="5"></line>
+                                    <line x1="19" y1="2" x2="19" y2="8"></line>
+                                </svg>
+                                <span class="btn-text">
+                                    <span class="btn-title">New Address</span>
+                                    <span class="btn-subtitle">Get a fresh inbox</span>
+                                </span>
+                            </span>
+                            <div class="btn-bg"></div>
+                        </button>
 
-                <p class="hint-text">Tap to generate a new disposable email</p>
-            </div>
-        </div>
+                        <!-- Auto-Copy Toggle -->
+                        <!-- Maybe confusing, keep simple -->
+                    </div>
 
-        <!-- Inbox Page -->
-        <div id="inbox-page" class="page">
-            <div class="page-header">
-                <div class="page-header-left">
-                    <h2 class="page-title">Inbox</h2>
-                    <span id="inbox-count" class="inbox-count">0 messages</span>
-                </div>
-                <button id="refresh-btn" class="icon-btn" aria-label="Refresh">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 12a9 9 0 1 1-9-9" />
-                        <path d="M21 3v9h-9" />
-                    </svg>
-                </button>
-            </div>
-
-            <div id="inbox-list" class="inbox-list">
-                <!-- Email items will be inserted here -->
-            </div>
-
-            <!-- Empty State -->
-            <div id="empty-state" class="empty-state">
-                <div class="empty-icon">📭</div>
-                <p class="empty-title">No emails yet</p>
-                <p class="empty-subtitle">New emails will appear here</p>
-            </div>
-        </div>
-
-        <!-- Email Detail Modal -->
-        <div id="email-modal" class="modal">
-            <div class="modal-overlay"></div>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button id="modal-back" class="icon-btn" aria-label="Back">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path d="M19 12H5M12 19l-7-7 7-7" />
-                        </svg>
-                    </button>
-                    <span class="modal-title">Email</span>
-                    <button id="modal-delete" class="icon-btn danger" aria-label="Delete">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path
-                                d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <div class="email-detail-header">
-                        <div id="detail-avatar" class="email-avatar">P</div>
-                        <div class="email-detail-info">
-                            <div id="detail-sender" class="email-sender">Sender Name</div>
-                            <div id="detail-from" class="email-from">sender@example.com</div>
-                            <div id="detail-date" class="email-date">Just now</div>
+                    <!-- Usage Tips -->
+                    <div class="tips-section">
+                        <h3>Quick Tips</h3>
+                        <div class="tip-card">
+                            <span class="tip-icon">✨</span>
+                            <div class="tip-text">Emails expire automatically. No cleanup needed.</div>
+                        </div>
+                        <div class="tip-card">
+                            <span class="tip-icon">🔒</span>
+                            <div class="tip-text">Private and secure. Only you have access.</div>
                         </div>
                     </div>
-                    <h3 id="detail-subject" class="email-subject-full">Email Subject</h3>
-                    <div class="email-divider"></div>
-                    <div id="detail-body" class="email-body">
-                        Email content goes here...
+                </div>
+            </div>
+
+            <!-- Inbox Page -->
+            <div id="inbox-page" class="page">
+                <div class="page-scroll">
+                    <header class="app-header">
+                        <h1 class="app-title">Inbox</h1>
+                        <button id="refresh-btn" class="icon-btn-ghost" aria-label="Refresh">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M23 4v6h-6"></path>
+                                <path d="M1 20v-6h6"></path>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                        </button>
+                    </header>
+
+                    <div id="inbox-list" class="inbox-list">
+                        <!-- Items injected here -->
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="empty-state" class="empty-state">
+                        <div class="empty-visual">
+                            <div class="circle c1"></div>
+                            <div class="circle c2"></div>
+                            <div class="icon">📭</div>
+                        </div>
+                        <h2>Inbox Empty</h2>
+                        <p>Waiting for incoming messages...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Modals -->
+
+        <!-- Email Reader -->
+        <div id="email-modal" class="sheet-modal">
+            <div class="sheet-overlay"></div>
+            <div class="sheet-content">
+                <div class="sheet-handle"></div>
+                <div class="sheet-scroll">
+                    <div class="sheet-header">
+                        <div class="sheet-actions">
+                            <button id="modal-back" class="icon-btn-ghost">Close</button>
+                        </div>
+                        <div class="sheet-actions">
+                            <button id="modal-delete" class="icon-btn-ghost danger">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path
+                                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                    </path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mail-reader">
+                        <h2 id="detail-subject" class="mail-subject">Subject</h2>
+                        <div class="mail-meta">
+                            <div id="detail-avatar" class="mail-avatar"></div>
+                            <div class="mail-info">
+                                <div id="detail-sender" class="mail-sender">Sender</div>
+                                <div id="detail-from" class="mail-from">email@domain.com</div>
+                            </div>
+                            <div id="detail-date" class="mail-date">Date</div>
+                        </div>
+                        <div class="mail-divider"></div>
+                        <div id="detail-body" class="mail-body"></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Delete Confirmation Modal -->
-        <div id="delete-modal" class="modal confirm-modal">
-            <div class="modal-overlay"></div>
-            <div class="confirm-content">
-                <h3 class="confirm-title">Delete Email?</h3>
-                <p class="confirm-text">This action cannot be undone.</p>
-                <div class="confirm-actions">
-                    <button id="cancel-delete" class="secondary-btn">Cancel</button>
-                    <button id="confirm-delete" class="danger-btn">Delete</button>
+        <!-- Settings Modal (Notifications) -->
+        <div id="settings-modal" class="sheet-modal">
+            <div class="sheet-overlay"></div>
+            <div class="sheet-content">
+                <div class="sheet-handle"></div>
+                <div class="sheet-header">
+                    <span class="sheet-title">Settings</span>
+                    <button id="settings-close" class="icon-btn-ghost">Done</button>
+                </div>
+                <div class="settings-list">
+                    <div class="setting-item">
+                        <div class="setting-icon bg-blue">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                        </div>
+                        <div class="setting-info">
+                            <div class="setting-label">Bot Notifications</div>
+                            <div class="setting-sub">Alert me when emails arrive</div>
+                        </div>
+                        <div class="setting-action">
+                            <label class="switch">
+                                <input type="checkbox" id="notify-toggle">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="setting-group-header">About</div>
+                    <div class="setting-item clickable"
+                        onclick="tg.openLink('https://github.com/mohdakil2426/TempHiveBot')">
+                        <div class="setting-icon bg-gray">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path
+                                    d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
+                                </path>
+                            </svg>
+                        </div>
+                        <div class="setting-info">
+                            <div class="setting-label">Source Code</div>
+                            <div class="setting-sub">GitHub</div>
+                        </div>
+                        <div class="setting-arrow">›</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Bottom Navigation -->
-        <nav class="bottom-nav">
-            <button class="nav-item active" data-page="mail">
-                <svg class="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                    <polyline points="22,6 12,13 2,6" />
-                </svg>
-                <span class="nav-label">Mail</span>
+        <!-- Tab Bar -->
+        <nav class="tab-bar">
+            <div class="tab-bar-bg"></div>
+            <button class="tab-item active" data-page="mail">
+                <div class="tab-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                        <polyline points="3 7 12 13 21 7"></polyline>
+                    </svg>
+                </div>
+                <span class="tab-label">Mail</span>
             </button>
-            <button class="nav-item" data-page="inbox">
-                <svg class="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2">
-                    <path d="M22 12h-6l-2 3H10l-2-3H2" />
-                    <path
-                        d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
-                </svg>
-                <span class="nav-label">Inbox</span>
-                <span id="nav-badge" class="nav-badge hidden">0</span>
+            <button class="tab-item" data-page="inbox">
+                <div class="tab-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                </div>
+                <!-- Badge -->
+                <span id="nav-badge" class="tab-badge hidden">0</span>
+                <span class="tab-label">Inbox</span>
             </button>
         </nav>
 
-        <!-- Toast -->
+        <!-- Toast Feedback -->
         <div id="toast" class="toast"></div>
     </div>
 
