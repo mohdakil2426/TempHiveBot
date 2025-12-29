@@ -15,7 +15,8 @@ const state = {
     messages: [],
     currentMessage: null,
     isLoading: false,
-    autoRefreshInterval: null
+    autoRefreshInterval: null,
+    isBotMode: false
 };
 
 // =========================================
@@ -30,14 +31,39 @@ function initTelegram() {
         return;
     }
 
+    // Check if running inside Telegram
+    // initData is always present in Telegram WebApp
+    state.isBotMode = !!tg.initData;
+    if (state.isBotMode) {
+        document.body.classList.add('in-telegram');
+    }
+
     // Ready
     tg.ready();
     tg.expand();
 
-    // Apply theme
-    if (tg.colorScheme === 'dark') {
-        document.body.classList.add('dark');
+    // Theme handling
+    function applyTheme() {
+        if (tg.colorScheme === 'dark') {
+            document.body.classList.add('dark');
+        } else {
+            document.body.classList.remove('dark');
+        }
+        // Update CSS variables if needed based on tg.themeParams
+        if (tg.themeParams) {
+            const root = document.documentElement;
+            if (tg.themeParams.bg_color) root.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color);
+            if (tg.themeParams.text_color) root.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color);
+            if (tg.themeParams.hint_color) root.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color);
+            if (tg.themeParams.link_color) root.style.setProperty('--tg-theme-link-color', tg.themeParams.link_color);
+            if (tg.themeParams.button_color) root.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color);
+            if (tg.themeParams.button_text_color) root.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color);
+            if (tg.themeParams.secondary_bg_color) root.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color);
+        }
     }
+
+    applyTheme();
+    tg.onEvent('themeChanged', applyTheme);
 
     // Back button handler
     tg.BackButton.onClick(() => {
@@ -72,6 +98,8 @@ const elements = {
     copyFeedback: $('#copy-feedback'),
     generateBtn: $('#generate-btn'),
     generateBtnText: $('#generate-btn-text'),
+    // Note: generate-btn-wrapper might need to be added to HTML if we want to target it, 
+    // but for now we target generateBtn directly.
 
     // Inbox page
     inboxCount: $('#inbox-count'),
@@ -400,10 +428,9 @@ async function initAccount() {
         } catch (e) {
             console.log('Auth from URL failed, creating new');
         }
-    } else if (tg && !loadAccount()) {
+    } else if (tg && !loadAccount() && state.isBotMode) {
         // Opened from Telegram menu button without synced email
-        // Show message and create new email for this session
-        showToast('Tip: Use "Open Mini App" button in chat for synced email', 'info');
+        showToast('Tip: Use "Open Mini App" button in chat', 'info');
     }
 
     // Load from storage
@@ -418,14 +445,32 @@ async function initAccount() {
             await getMessages();
         } catch (error) {
             console.log('Account expired, creating new');
-            await generateNewEmail();
+            if (state.isBotMode) {
+                showToast('Current email expired. Generate new in Bot.', 'error');
+                elements.emailText.textContent = 'Expired';
+                state.account = null;
+                clearAccount();
+            } else {
+                await generateNewEmail();
+            }
         }
     } else {
-        await generateNewEmail();
+        if (!state.isBotMode) {
+            await generateNewEmail();
+        } else {
+            elements.emailText.textContent = 'No Active Email';
+            showToast('Generate a new email in the Bot first', 'info');
+        }
     }
 }
 
 async function generateNewEmail() {
+    if (state.isBotMode) {
+        showToast('Please use the Bot to generate a new email', 'info');
+        window.haptic?.('warning');
+        return;
+    }
+
     if (state.isLoading) return;
 
     state.isLoading = true;
@@ -464,7 +509,12 @@ async function loadInbox() {
         renderInbox();
     } catch (error) {
         console.error('Error loading inbox:', error);
-        showToast('Failed to load inbox', 'error');
+        // If 401, it might mean account deletion.
+        if (state.isBotMode && !state.account) {
+            // Do nothing, wait for user to re-sync
+        } else {
+            showToast('Failed to load inbox', 'error');
+        }
     } finally {
         elements.refreshBtn.classList.remove('loading');
     }
@@ -532,6 +582,16 @@ async function openEmail(id) {
         if (item) {
             item.classList.remove('unread');
             item.querySelector('.unread-dot')?.remove();
+        }
+
+        // Mark as read on server (silent)
+        try {
+            await apiRequest(`/messages/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ seen: true })
+            });
+        } catch (e) {
+            console.error('Failed to mark as read', e);
         }
 
     } catch (error) {
@@ -642,7 +702,7 @@ async function init() {
     initTelegram();
     setupEventListeners();
     await initAccount();
-    updateEmailDisplay();
+    // updateEmailDisplay called inside initAccount if valid
     startAutoRefresh();
 }
 

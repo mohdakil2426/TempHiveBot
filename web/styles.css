@@ -963,3 +963,20 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-quaternary);
 }
+
+/* =========================================
+   Telegram Integration Overrides
+   ========================================= */
+
+.in-telegram #generate-btn {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    box-shadow: none;
+    border: 1px solid var(--border);
+}
+
+.in-telegram #generate-btn:hover {
+    transform: none;
+    background: var(--bg-tertiary);
+    box-shadow: none;
+}
