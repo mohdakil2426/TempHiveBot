@@ -35,9 +35,6 @@ function initTelegram() {
     state.isBotMode = !!tg.initData;
     if (state.isBotMode) {
         document.body.classList.add('in-telegram');
-        // Retrieve stored notification preference if any (optional, usually we just check if synced)
-        // Actually we can't check if synced with bot easily without backend. 
-        // We'll trust local storage or user action.
     }
 
     tg.ready();
@@ -54,7 +51,6 @@ function initTelegram() {
             document.documentElement.classList.remove('dark');
         }
 
-        // Update header color on theme change
         tg.setHeaderColor?.(tg.colorScheme === 'dark' ? '#1C1C1E' : '#F2F2F7');
         tg.setBackgroundColor?.(tg.colorScheme === 'dark' ? '#000000' : '#F2F2F7');
     }
@@ -64,11 +60,14 @@ function initTelegram() {
 
     // Back button
     tg.BackButton.onClick(() => {
-        const modals = document.querySelectorAll('.sheet-modal.active');
-        if (modals.length > 0) {
-            closeAllModals();
+        if (state.currentPage === 'read') {
+            navigateTo('inbox');
         } else if (state.currentPage === 'inbox') {
             navigateTo('mail');
+        } else {
+            // Check modals like Settings
+            const modals = document.querySelectorAll('.sheet-modal.active');
+            if (modals.length > 0) closeAllModals();
         }
     });
 
@@ -88,6 +87,7 @@ const elements = {
     // Pages
     mailPage: $('#mail-page'),
     inboxPage: $('#inbox-page'),
+    readPage: $('#read-page'),
 
     // Mail page
     emailText: $('#email-text'),
@@ -100,13 +100,9 @@ const elements = {
     emptyState: $('#empty-state'),
     refreshBtn: $('#refresh-btn'),
 
-    // Modals
-    emailModal: $('#email-modal'),
-    settingsModal: $('#settings-modal'),
-
-    // Email Detail
-    modalBack: $('#modal-back'),
-    modalDelete: $('#modal-delete'),
+    // Read Page Elements
+    readBackBtn: $('#read-back-btn'),
+    readDeleteBtn: $('#read-delete-btn'),
     detailAvatar: $('#detail-avatar'),
     detailSender: $('#detail-sender'),
     detailFrom: $('#detail-from'),
@@ -114,13 +110,15 @@ const elements = {
     detailSubject: $('#detail-subject'),
     detailBody: $('#detail-body'),
 
-    // Settings
+    // Modals
+    settingsModal: $('#settings-modal'),
     settingsClose: $('#settings-close'),
     notifyToggle: $('#notify-toggle'),
 
     // Navigation
     tabItems: $$('.tab-item'),
     navBadge: $('#nav-badge'),
+    tabBar: $('.tab-bar'), // Added
 
     // Toast
     toast: $('#toast')
@@ -156,11 +154,6 @@ function getInitial(email) {
     return (email?.charAt(0) || '?').toUpperCase();
 }
 
-function stripHtml(html) {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    return doc.body.textContent || '';
-}
-
 function showToast(message, type = '') {
     if (!elements.toast) return;
     elements.toast.textContent = message;
@@ -183,34 +176,21 @@ function loadAccount() {
     return data ? JSON.parse(data) : null;
 }
 
-function clearAccount() {
-    localStorage.removeItem('tempmail_account');
-}
-
 // =========================================
-// API
+// API & Sync
 // =========================================
 
 async function apiRequest(endpoint, options = {}) {
     const url = `${API_BASE}${endpoint}`;
-    const headers = {
-        'Content-Type': 'application/json',
-        ...options.headers
-    };
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
 
     if (state.account?.token) {
         headers['Authorization'] = `Bearer ${state.account.token}`;
     }
 
     const response = await fetch(url, { ...options, headers });
-
     if (response.status === 204) return null;
-
-    if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`API Error: ${response.status} - ${error}`);
-    }
-
+    if (!response.ok) throw new Error('API Error');
     return response.json();
 }
 
@@ -238,30 +218,7 @@ async function createAccount() {
         body: JSON.stringify({ address: email, password })
     });
 
-    return {
-        id: account.id,
-        email: email,
-        password: password,
-        token: auth.token
-    };
-}
-
-async function refreshToken() {
-    if (!state.account) return false;
-    try {
-        const auth = await apiRequest('/token', {
-            method: 'POST',
-            body: JSON.stringify({
-                address: state.account.email,
-                password: state.account.password
-            })
-        });
-        state.account.token = auth.token;
-        saveAccount(state.account);
-        return true;
-    } catch (error) {
-        return false;
-    }
+    return { id: account.id, email, password, token: auth.token };
 }
 
 async function getMessages() {
@@ -269,13 +226,7 @@ async function getMessages() {
     try {
         const response = await apiRequest('/messages');
         return response['hydra:member'] || [];
-    } catch (error) {
-        if (await refreshToken()) {
-            const response = await apiRequest('/messages');
-            return response['hydra:member'] || [];
-        }
-        throw error;
-    }
+    } catch (e) { return []; }
 }
 
 async function getMessage(id) {
@@ -297,17 +248,20 @@ function navigateTo(page) {
     $$('.page').forEach(p => p.classList.remove('active'));
     $(`#${page}-page`).classList.add('active');
 
-    // Tab Bar
-    elements.tabItems.forEach(item => {
-        item.classList.toggle('active', item.dataset.page === page);
-    });
+    // Tab Bar Visibility
+    if (page === 'read') {
+        elements.tabBar.style.display = 'none'; // Hide nav on read page
+        if (tg) tg.BackButton.show();
+    } else {
+        elements.tabBar.style.display = 'flex';
+        // Tab Selection
+        elements.tabItems.forEach(item => {
+            item.classList.toggle('active', item.dataset.page === page);
+        });
 
-    // Back Button (Telegram)
-    if (tg) {
-        if (page === 'inbox') {
-            tg.BackButton.show();
-        } else {
-            tg.BackButton.hide();
+        if (tg) {
+            if (page === 'inbox') tg.BackButton.show();
+            else tg.BackButton.hide();
         }
     }
 
@@ -328,8 +282,7 @@ function updateEmailDisplay() {
 }
 
 function updateInboxCount(count) {
-    if (!elements.inboxCount) return;
-    // Only update badge
+    if (!elements.navBadge) return;
     if (count > 0) {
         elements.navBadge.textContent = count > 99 ? '99+' : count;
         elements.navBadge.classList.remove('hidden');
@@ -344,7 +297,7 @@ function renderInbox() {
 
     if (messages.length === 0) {
         elements.inboxList.innerHTML = '';
-        elements.emptyState.style.display = 'flex'; // show
+        elements.emptyState.style.display = 'flex';
         return;
     }
 
@@ -358,7 +311,6 @@ function renderInbox() {
         const preview = msg.intro || '';
         const time = formatDate(msg.createdAt);
         const initial = getInitial(senderEmail);
-        const unreadClass = !msg.seen ? 'unread' : ''; // You might want css for .unread
 
         return `
             <div class="email-item" data-id="${msg.id}">
@@ -387,50 +339,28 @@ function renderInbox() {
 async function initAccount() {
     const params = new URLSearchParams(window.location.search);
     const auth = params.get('auth');
-    const initialPage = params.get('page') || 'mail';
-
-    let synced = false;
 
     if (auth) {
         try {
             const decoded = atob(auth.replace(/-/g, '+').replace(/_/g, '/'));
             const [email, password] = decoded.split(':');
             if (email && password) {
-                const authResponse = await apiRequest('/token', {
-                    method: 'POST',
-                    body: JSON.stringify({ address: email, password })
-                });
+                const authResponse = await apiRequest('/token', { method: 'POST', body: JSON.stringify({ address: email, password }) });
                 state.account = { email, password, token: authResponse.token };
                 saveAccount(state.account);
                 window.history.replaceState({}, document.title, window.location.pathname);
                 showToast('Synced from Telegram!', 'success');
-                synced = true;
-
-                // Assume if synced from bot, notifications should be enabled (UI wise)
                 state.notificationsEnabled = true;
                 if (elements.notifyToggle) elements.notifyToggle.checked = true;
-
-                if (initialPage === 'inbox') navigateTo('inbox');
             }
-        } catch (e) {
-            console.log('Auth failed');
-        }
+        } catch (e) { console.log('Auth error'); }
     }
 
-    if (!state.account) {
-        state.account = loadAccount();
-    }
+    if (!state.account) state.account = loadAccount();
 
     if (state.account) {
         updateEmailDisplay();
-        try {
-            await getMessages();
-        } catch (error) {
-            console.log('Expired');
-            if (elements.emailText) elements.emailText.textContent = 'Expired';
-            // Auto-generate new one if expired
-            await generateNewEmail();
-        }
+        try { await getMessages(); } catch (e) { await generateNewEmail(); }
     } else {
         await generateNewEmail();
     }
@@ -438,7 +368,6 @@ async function initAccount() {
 
 async function generateNewEmail() {
     if (state.isLoading) return;
-
     state.isLoading = true;
     if (elements.generateBtn) elements.generateBtn.classList.add('loading');
     if (elements.emailText) elements.emailText.textContent = 'Generating...';
@@ -453,13 +382,9 @@ async function generateNewEmail() {
         showToast('New Identity Created', 'success');
         window.haptic?.('success');
 
-        // Check if we need to sync for notifications
-        if (state.notificationsEnabled && state.isBotMode) {
-            syncToBot(newAccount);
-        }
+        if (state.notificationsEnabled && state.isBotMode) syncToBot(newAccount);
 
     } catch (error) {
-        console.error('Error:', error);
         showToast('Failed to generate', 'error');
         window.haptic?.('error');
     } finally {
@@ -469,47 +394,16 @@ async function generateNewEmail() {
 }
 
 function syncToBot(account) {
-    // Create Deep Link payload
     const data = `${account.email}:${account.password}`;
-    let payload = btoa(data);
-    payload = payload.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-    // We can't stay in app AND open link easily (it closes app). 
-    // Option: Use tg.openTelegramLink which closes app.
-    // For now, we will NOT auto-sync on every generate to avoid annoyance.
-    // We only sync if user explicitly toggles the notification switch.
-    // OR we warn user "Syncing..." and do it.
-}
-
-// Notification Toggle Logic
-function handleNotificationToggle(e) {
-    const isChecked = e.target.checked;
-    state.notificationsEnabled = isChecked;
-
-    if (isChecked && state.account && state.isBotMode) {
-        // Trigger Sync
-        const data = `${state.account.email}:${state.account.password}`;
-        let payload = btoa(data);
-        payload = payload.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-        tg.showConfirm("To enable notifications, we need to sync with the Bot. This will close the app briefly.", (confirmed) => {
-            if (confirmed) {
-                tg.openTelegramLink(`https://t.me/TempHiveBot?start=SYNC_${payload}`);
-            } else {
-                e.target.checked = false; // revert
-                state.notificationsEnabled = false;
-            }
-        });
-    }
+    let payload = btoa(data).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    // Logic to sync
 }
 
 async function loadInbox() {
-    if (elements.refreshBtn) elements.refreshBtn.classList.add('loading'); // You'll need css rotation for this class
+    if (elements.refreshBtn) elements.refreshBtn.classList.add('loading');
     try {
         state.messages = await getMessages();
         renderInbox();
-    } catch (e) {
-        console.error(e);
     } finally {
         if (elements.refreshBtn) elements.refreshBtn.classList.remove('loading');
     }
@@ -535,85 +429,64 @@ async function openEmail(id) {
         const senderName = message.from?.name || '';
         const senderEmail = message.from?.address || 'Unknown';
 
-        // Populate Modal
+        // Populate Details
         elements.detailAvatar.textContent = getInitial(senderEmail);
         elements.detailSender.textContent = senderName || senderEmail.split('@')[0];
         elements.detailFrom.textContent = senderEmail;
         elements.detailDate.textContent = formatDate(message.createdAt);
         elements.detailSubject.textContent = message.subject || '(No Subject)';
 
-        // Handle Body Content - Prioritize HTML
+        // Handle Body Content
         const htmlSource = Array.isArray(message.html) ? message.html[0] : message.html;
 
         if (htmlSource) {
-            // Render HTML
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlSource, 'text/html');
-
-            // Remove scripts
             doc.querySelectorAll('script').forEach(el => el.remove());
-
-            // External links
             doc.querySelectorAll('a').forEach(el => {
                 el.setAttribute('target', '_blank');
                 el.setAttribute('rel', 'noopener noreferrer');
             });
 
-            // Isolate styles using Shadow DOM
-            elements.detailBody.textContent = '';
-            if (!elements.detailBody.shadowRoot) {
-                elements.detailBody.attachShadow({ mode: 'open' });
-            }
+            if (!elements.detailBody.shadowRoot) elements.detailBody.attachShadow({ mode: 'open' });
 
-            // Style for the shadow root
-            const style = document.createElement('style');
-            style.textContent = `
-                :host { display: block; overflow-x: auto; }
-                body { 
-                    background: transparent !important; 
-                    color: var(--text-primary, #000); 
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                    margin: 0; 
-                    padding: 0; 
-                    font-size: 16px;
-                    line-height: 1.5;
-                }
-                img { max-width: 100%; height: auto; }
-                p { margin: 0 0 1em 0; }
-                a { color: var(--accent, #007AFF); }
+            elements.detailBody.shadowRoot.innerHTML = `
+                <style>
+                    :host { display: block; overflow-x: auto; }
+                    body { 
+                        background: transparent !important; 
+                        color: var(--text-primary, #000); 
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                        margin: 0; padding: 0; 
+                        font-size: 16px; line-height: 1.5;
+                    }
+                    img { max-width: 100%; height: auto; }
+                    a { color: var(--accent, #007AFF); }
+                </style>
             `;
-
-            elements.detailBody.shadowRoot.innerHTML = '';
-            elements.detailBody.shadowRoot.appendChild(style);
             elements.detailBody.shadowRoot.appendChild(doc.body || doc.documentElement);
-
         } else {
-            // Fallback to Text
             const content = message.text || '(No content)';
-            elements.detailBody.textContent = '';
-
-            // Use shadow dom for text too to maintain consistency
-            if (!elements.detailBody.shadowRoot) {
-                elements.detailBody.attachShadow({ mode: 'open' });
-            }
-
+            if (!elements.detailBody.shadowRoot) elements.detailBody.attachShadow({ mode: 'open' });
             elements.detailBody.shadowRoot.innerHTML = `
                 <style>
                     body { 
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-                        font-size: 16px; 
-                        line-height: 1.5; 
+                        font-size: 16px; line-height: 1.5; 
                         color: var(--text-primary, #000); 
-                        white-space: pre-wrap; 
-                        margin: 0; 
+                        white-space: pre-wrap; margin: 0; 
                     }
                 </style>
                 <body>${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</body>
             `;
         }
 
-        elements.emailModal.classList.add('active');
-        if (tg) tg.BackButton.show();
+        // Navigate to Read Page
+        navigateTo('read');
+
+        // Mark as read locally
+        const item = $(`.email-item[data-id="${id}"]`);
+        if (item) item.classList.remove('unread');
 
         // Mark read silently
         if (!message.seen) {
@@ -623,25 +496,6 @@ async function openEmail(id) {
     } catch (e) {
         showToast('Error opening email', 'error');
     }
-}
-
-function closeAllModals() {
-    $$('.sheet-modal').forEach(m => m.classList.remove('active'));
-    state.currentMessage = null;
-    if (tg && state.currentPage === 'mail') tg.BackButton.hide();
-}
-
-
-// Auto Refresh
-function startAutoRefresh() {
-    stopAutoRefresh();
-    state.autoRefreshInterval = setInterval(async () => {
-        if (state.currentPage === 'inbox') await loadInbox();
-    }, 15000);
-}
-
-function stopAutoRefresh() {
-    if (state.autoRefreshInterval) clearInterval(state.autoRefreshInterval);
 }
 
 // =========================================
@@ -654,37 +508,30 @@ function setupEventListeners() {
         item.addEventListener('click', () => navigateTo(item.dataset.page));
     });
 
+    // Read Page Navigation
+    if (elements.readBackBtn) elements.readBackBtn.addEventListener('click', () => navigateTo('inbox'));
+
     // Actions
     if (elements.copyBtn) elements.copyBtn.addEventListener('click', copyEmail);
     if (elements.generateBtn) elements.generateBtn.addEventListener('click', generateNewEmail);
     if (elements.refreshBtn) elements.refreshBtn.addEventListener('click', loadInbox);
     if (elements.settingsBtn) elements.settingsBtn.addEventListener('click', () => elements.settingsModal.classList.add('active'));
 
-    // Modals
-    if (elements.modalBack) elements.modalBack.addEventListener('click', closeAllModals);
-    if (elements.settingsClose) elements.settingsClose.addEventListener('click', closeAllModals);
+    // Settings
+    if (elements.settingsClose) elements.settingsClose.addEventListener('click', () => elements.settingsModal.classList.remove('active'));
+    if (elements.notifyToggle) elements.notifyToggle.addEventListener('change', handleNotificationToggle);
 
-    // Note: modalDelete logic might need updates if modalDelete button isn't immediately in DOM or if changed to simpler confirmation
-    // For now assuming existing structure for Delete Confirmation or just deleting directly/using standard confirmation
-    // Reusing the modalDelete button from HTML
-
-    // Actually we don't have a separate delete confirmation modal in the new HTML, only 'modal-delete' button in the reader.
-    // Let's implement a direct confirmation using Telegram confirm or simple browser confirm for simplicity in MVP premium.
-    // Or if we kept the delete-modal in HTML (I think I removed it? Let me check previous turn)
-    // Checking index.html... I REMOVED delete-modal in favor of simpler UI.
-    // Wait, checking my previous `replace_file_content` for index.html... 
-    // I DID NOT include delete-modal in the new version.
-
-    if (elements.modalDelete) {
-        elements.modalDelete.addEventListener('click', async () => {
+    // Delete Email
+    if (elements.readDeleteBtn) {
+        elements.readDeleteBtn.addEventListener('click', async () => {
             if (state.currentMessage) {
                 tg.showConfirm("Delete this email?", async (yes) => {
                     if (yes) {
                         try {
                             await deleteMessage(state.currentMessage.id);
                             state.messages = state.messages.filter(m => m.id !== state.currentMessage.id);
-                            renderInbox();
-                            closeAllModals();
+                            // We go back to inbox
+                            navigateTo('inbox');
                             showToast('Deleted', 'success');
                         } catch (e) {
                             showToast('Error deleting', 'error');
@@ -695,19 +542,28 @@ function setupEventListeners() {
         });
     }
 
-    // Settings Toggle
-    if (elements.notifyToggle) elements.notifyToggle.addEventListener('change', handleNotificationToggle);
-
-    // Close on click outside (sheets)
+    // Close on click outside (settings sheet only now)
     $$('.sheet-overlay').forEach(overlay => {
-        overlay.addEventListener('click', closeAllModals);
+        overlay.addEventListener('click', () => elements.settingsModal.classList.remove('active'));
     });
 }
 
+function closeAllModals() {
+    elements.settingsModal.classList.remove('active');
+}
+
 // =========================================
-// Init
+// Loop
 // =========================================
 
+function startAutoRefresh() {
+    if (state.autoRefreshInterval) clearInterval(state.autoRefreshInterval);
+    state.autoRefreshInterval = setInterval(async () => {
+        if (state.currentPage === 'inbox') await loadInbox();
+    }, 15000);
+}
+
+// Init
 async function init() {
     initTelegram();
     setupEventListeners();

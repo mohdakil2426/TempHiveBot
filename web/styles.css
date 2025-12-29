@@ -562,50 +562,90 @@ html.dark .sheet-scroll {
     background: var(--bg-card);
 }
 
-/* Mail Reader */
-.mail-subject {
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 16px;
+/* Mail Reader Full Page */
+.mail-reader-content {
+    padding: 0 24px 100px 24px;
 }
 
-.mail-meta {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+.mail-header-section {
     margin-bottom: 24px;
 }
 
-.mail-avatar {
-    width: 48px;
-    height: 48px;
-    background: var(--accent);
-    border-radius: 50%;
+.mail-subject {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 0 0 16px 0;
+    letter-spacing: -0.5px;
 }
 
-.mail-info {
+.mail-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mail-avatar.small {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.mail-info-col {
     flex: 1;
+    min-width: 0;
 }
 
 .mail-sender {
+    font-size: 17px;
     font-weight: 600;
-    font-size: 16px;
+    color: var(--text-primary);
 }
 
 .mail-from {
+    font-size: 13px;
     color: var(--text-secondary);
-    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .mail-date {
     font-size: 13px;
     color: var(--text-tertiary);
+    flex-shrink: 0;
 }
 
-.mail-body {
+.mail-divider {
+    height: 1px;
+    background: rgba(0, 0, 0, 0.06);
+    margin: 24px 0;
+}
+
+html.dark .mail-divider {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.mail-body-full {
     font-size: 16px;
     line-height: 1.6;
     color: var(--text-primary);
+    min-height: 300px;
+}
+
+.app-title.small {
+    font-size: 17px;
+    font-weight: 600;
+    text-align: center;
+    width: 100%;
+    /* Centering logic flex handles */
 }
 
 /* Settings List */

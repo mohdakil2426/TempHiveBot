@@ -136,41 +136,42 @@
 
         <!-- Modals -->
 
-        <!-- Email Reader -->
-        <div id="email-modal" class="sheet-modal">
-            <div class="sheet-overlay"></div>
-            <div class="sheet-content">
-                <div class="sheet-handle"></div>
-                <div class="sheet-scroll">
-                    <div class="sheet-header">
-                        <div class="sheet-actions">
-                            <button id="modal-back" class="icon-btn-ghost">Close</button>
-                        </div>
-                        <div class="sheet-actions">
-                            <button id="modal-delete" class="icon-btn-ghost danger">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path
-                                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                                    </path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="mail-reader">
+        <!-- Read Page (Full Screen) -->
+        <div id="read-page" class="page">
+            <div class="page-scroll">
+                <!-- Header with Back Button -->
+                <header class="app-header">
+                    <button id="read-back-btn" class="icon-btn-ghost" aria-label="Back">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H5M12 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <h1 class="app-title small">Message</h1>
+                    <button id="read-delete-btn" class="icon-btn-ghost danger" aria-label="Delete">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                        </svg>
+                    </button>
+                </header>
+
+                <div class="mail-reader-content">
+                    <div class="mail-header-section">
                         <h2 id="detail-subject" class="mail-subject">Subject</h2>
-                        <div class="mail-meta">
-                            <div id="detail-avatar" class="mail-avatar"></div>
-                            <div class="mail-info">
-                                <div id="detail-sender" class="mail-sender">Sender</div>
+                        <div class="mail-meta-row">
+                            <div id="detail-avatar" class="mail-avatar small"></div>
+                            <div class="mail-info-col">
+                                <div id="detail-sender" class="mail-sender">Sender Name</div>
                                 <div id="detail-from" class="mail-from">email@domain.com</div>
                             </div>
                             <div id="detail-date" class="mail-date">Date</div>
                         </div>
-                        <div class="mail-divider"></div>
-                        <div id="detail-body" class="mail-body"></div>
                     </div>
+                    <div class="mail-divider"></div>
+                    <div id="detail-body" class="mail-body-full"></div>
                 </div>
             </div>
         </div>
