@@ -1,0 +1,1 @@
+"""TempMail Telegram Bot package."""
