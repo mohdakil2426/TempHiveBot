@@ -1,10 +1,12 @@
 """TempMail Telegram Bot - Entry Point."""
 
 import logging
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram import BotCommand
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters
 
 from .config import BOT_TOKEN, POLL_INTERVAL
-from .handlers import start, email, inbox, callbacks
+from .handlers import start
+from .handlers.buttons import message_handler, callback_handler
 from .services.notifier import check_new_emails
 from .database.storage import storage
 
@@ -17,9 +19,18 @@ logger = logging.getLogger(__name__)
 
 
 async def post_init(application: Application) -> None:
-    """Initialize database after application starts."""
+    """Initialize database and set bot commands after application starts."""
+    # Initialize database
     await storage.init_db()
     logger.info("Database initialized")
+    
+    # Set bot menu commands
+    commands = [
+        BotCommand("start", "Generate new email address, show inbox"),
+        BotCommand("help", "Show help information"),
+    ]
+    await application.bot.set_my_commands(commands)
+    logger.info("Bot commands set")
 
 
 def main():
@@ -34,15 +45,12 @@ def main():
     # Register command handlers
     application.add_handler(CommandHandler("start", start.start_command))
     application.add_handler(CommandHandler("help", start.help_command))
-    application.add_handler(CommandHandler("new", email.new_command))
-    application.add_handler(CommandHandler("mymail", email.mymail_command))
-    application.add_handler(CommandHandler("inbox", inbox.inbox_command))
-    application.add_handler(CommandHandler("refresh", inbox.refresh_command))
-    application.add_handler(CommandHandler("read", inbox.read_command))
-    application.add_handler(CommandHandler("delete", inbox.delete_command))
     
-    # Register callback handler for inline buttons
-    application.add_handler(CallbackQueryHandler(callbacks.handle_callback))
+    # Register callback query handler for inline buttons
+    application.add_handler(CallbackQueryHandler(callback_handler))
+    
+    # Register message handler for button presses (must be added after command handlers)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
     
     # Set up background job for checking new emails
     job_queue = application.job_queue

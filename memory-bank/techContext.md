@@ -1,4 +1,4 @@
-# TempMail Bot - Technical Context
+# TempMail - Technical Context
 
 ## Technology Stack
 
@@ -10,6 +10,7 @@
 | Database | SQLite (via aiosqlite) | 0.19.0 |
 | Config | python-dotenv | 1.0.0 |
 | Scheduler | APScheduler | 3.10.4 |
+| Web Frontend | Vanilla HTML/CSS/JS | - |
 
 ## Development Setup
 
@@ -31,8 +32,16 @@ POLL_INTERVAL=30
 ```
 
 ### Running
+
+**Telegram Bot:**
 ```bash
 python -m bot.main
+```
+
+**Web Interface:**
+```bash
+python server.py
+# Opens http://localhost:8000 automatically
 ```
 
 ## External Dependencies
@@ -48,6 +57,7 @@ python -m bot.main
 |----------|--------|---------|
 | `/domains` | GET | Get available email domains |
 | `/accounts` | POST | Create new email account |
+| `/accounts/{id}` | DELETE | Delete email account |
 | `/token` | POST | Authenticate and get JWT |
 | `/messages` | GET | List inbox messages |
 | `/messages/{id}` | GET | Read full message |
@@ -59,22 +69,7 @@ python -m bot.main
 2. **Token Expiry** - JWT tokens expire, need refresh logic
 3. **Polling Interval** - Balance between responsiveness and API limits
 4. **Message Size** - Telegram has 4096 character limit per message
-
-## File System
-
-```
-TempMail/
-├── bot/                    # Main bot package
-│   ├── handlers/           # Telegram command handlers
-│   ├── services/           # External service wrappers
-│   ├── database/           # Data persistence
-│   └── utils/              # Helper functions
-├── data/                   # Runtime data (SQLite DB)
-├── memory-bank/            # Project documentation
-├── .env                    # Configuration (not in git)
-├── requirements.txt        # Python dependencies
-└── README.md               # User documentation
-```
+5. **localhost URLs** - Telegram doesn't allow localhost in inline button URLs
 
 ## Database Schema
 
@@ -89,3 +84,23 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
+
+## Bot Commands (Menu)
+
+| Command | Description |
+|---------|-------------|
+| `/start` | Generate new email address, show inbox |
+| `/help` | Show help information |
+
+## Persistent Keyboard Buttons
+
+| Button | Action |
+|--------|--------|
+| ➕ Generate New / Delete | Creates new email, deletes old one |
+| 🔄 Refresh | Refreshes inbox display |
+
+## Inline Buttons
+
+| Button | Action |
+|--------|--------|
+| Open in Browser ➡️ | Shows toast with web URL |

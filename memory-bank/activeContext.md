@@ -1,42 +1,70 @@
-# TempMail Bot - Active Context
+# TempMail - Active Context
 
 ## Current State
-**Status**: ✅ Complete and Running  
-**Last Updated**: 2025-12-29
+**Status**: ✅ Complete - Both Bot & Web Interface Running  
+**Last Updated**: 2025-12-29 23:46 IST
 
-## Recent Changes (2025-12-28)
-1. Initialized full project structure
-2. Implemented Mail.tm API wrapper with httpx
-3. Created SQLite storage for user sessions
-4. Built all Telegram command handlers
-5. Added background email notification system
-6. Fixed Python 3.13 compatibility issues
+## Running Services
+1. **Telegram Bot**: `python -m bot.main` ✅ Running
+2. **Web Server**: `python server.py` at http://localhost:8000 ✅ Running
 
-## Current Focus
-- Bot is fully functional
-- Ready for production use or further enhancements
+## Recent Session Summary (2025-12-29)
 
-## Next Steps (Potential)
-- [ ] Add `/deletemail` command to delete current email and account
-- [ ] Add support for email attachments download
-- [ ] Implement email forwarding rules
-- [ ] Add admin commands for bot management
-- [ ] Multi-language support
+### What Was Done
+1. Created full Telegram bot with Mail.tm integration
+2. Created beautiful dark-theme web interface
+3. Implemented persistent keyboard buttons (Generate New/Delete, Refresh)
+4. Fixed Markdown parsing errors by switching to plain text
+5. Fixed localhost URL issue in "Open in Browser" button
+6. Removed unnecessary loading messages
+7. Added callback handler for inline buttons
+
+### Key Files Modified
+- `bot/handlers/start.py` - Main command handlers
+- `bot/handlers/buttons.py` - Button and callback handlers
+- `bot/main.py` - Entry point with all handlers registered
+- `server.py` - Web server with auto port finding
+
+### Issues Resolved
+1. **aiohttp build failure** → Switched to httpx
+2. **Python 3.13 compatibility** → Upgraded python-telegram-bot to v22.5
+3. **Markdown parsing errors** → Switched to plain text messages
+4. **localhost in button URLs** → Changed to callback with toast message
+5. **Port already in use** → Server now finds free port automatically
+
+## Current Bot Behavior
+
+### /start Flow
+1. Shows "🚀 Welcome to TempMail Bot!"
+2. If no email exists, creates one automatically
+3. Shows "Current email address: x@y.com" + inbox status
+4. Shows persistent keyboard with 2 buttons
+
+### Generate New / Delete Flow
+1. Deletes old Mail.tm account (if exists)
+2. Creates new email immediately
+3. Shows confirmation + new email status
+
+### Refresh Flow
+1. Fetches latest messages from Mail.tm
+2. Shows current email + inbox status
+
+### Open in Browser Flow
+1. Shows toast popup with localhost URL
+2. No text message sent
 
 ## Active Decisions
-- Using polling instead of Mercure SSE (simpler deployment)
-- 30-second poll interval (balances responsiveness vs API limits)
-- SQLite for storage (good enough for single-bot deployment)
+- Plain text messages (no Markdown/HTML parsing issues)
+- Callback with toast for "Open in Browser" (localhost URLs not allowed in buttons)
+- No loading messages (instant feel)
+- 30-second poll interval for background notifications
 
-## Important Patterns
-1. **Async Everywhere** - All I/O operations are async
-2. **Global Service Instances** - `mailtm_service` and `storage` are singletons
-3. **MarkdownV2** - All Telegram messages use escaped MarkdownV2
+## Next Steps (Potential)
+- [ ] Deploy web interface to public hosting (Vercel, Netlify)
+- [ ] Add real public URL for "Open in Browser" button
+- [ ] Add email content preview in bot
+- [ ] Add "Read Full" and "Delete" buttons for individual emails
+- [ ] Multi-language support
 
 ## Known Issues
-None currently - bot is working as expected.
-
-## Session Info
-- **Bot Token**: Stored in `.env`
-- **Database**: `data/bot.db` (auto-created on first run)
-- **Logs**: Console output with timestamps
+None currently - both interfaces working as expected.

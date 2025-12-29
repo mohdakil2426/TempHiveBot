@@ -1,16 +1,43 @@
-# TempMail Telegram Bot 📧
+# TempMail - Telegram Bot & Web App 📧
 
-A Telegram bot that provides temporary email addresses using the [Mail.tm](https://mail.tm) API. Generate disposable emails, receive messages in real-time, and manage your inbox directly through Telegram.
+A complete temporary email solution with both **Telegram Bot** and **Web Interface** using the [Mail.tm](https://mail.tm) API. Generate disposable emails, receive messages in real-time, and manage your inbox.
 
 ## Features
 
-- 📧 **Instant Email Generation** - Create temporary email addresses with one command
-- 📬 **Real-time Notifications** - Get notified when new emails arrive
-- 📖 **Read Emails** - View full email content directly in Telegram
-- 🗑️ **Easy Management** - Delete emails with a single tap
-- 🔐 **Private** - Each user gets their own unique email address
+- 📧 **Instant Email Generation** - Create temporary email addresses with one click
+- 📬 **Real-time Inbox** - Receive emails directly in Telegram or browser  
+- 🔔 **Auto Refresh** - Automatic polling for new messages
+- 📖 **Read Emails** - View full email content
+- 🗑️ **Easy Management** - Delete emails with a single click
+- 🌐 **Dual Interface** - Use via Telegram Bot or Web Browser
 
-## Commands
+---
+
+## 🌐 Web Interface
+
+### Quick Start
+
+```bash
+python server.py
+```
+
+This will:
+1. Start a local server at `http://localhost:8000`
+2. Automatically open your browser
+3. Generate a new temporary email instantly
+
+### Features
+- 🌙 Beautiful dark theme
+- 📱 Fully responsive design
+- 🔄 Auto-refresh every 10 seconds
+- 📋 One-click copy email
+- 💾 Persists session in browser
+
+---
+
+## 🤖 Telegram Bot
+
+### Commands
 
 | Command | Description |
 |---------|-------------|
@@ -20,6 +47,14 @@ A Telegram bot that provides temporary email addresses using the [Mail.tm](https
 | `/inbox` | View your inbox |
 | `/refresh` | Manually check for new emails |
 | `/help` | Display help message |
+
+### Running the Bot
+
+```bash
+python -m bot.main
+```
+
+---
 
 ## Installation
 

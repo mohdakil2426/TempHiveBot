@@ -1,20 +1,21 @@
-# TempMail Telegram Bot - Project Brief
+# TempMail - Project Brief
 
 ## Project Overview
-A Telegram bot that provides temporary/disposable email addresses using the Mail.tm API. Users can generate emails, receive messages, and manage their inbox directly through Telegram.
+A dual-interface temporary email solution with **Telegram Bot** and **Web Interface** using the Mail.tm API. Users can generate disposable emails, receive messages, and manage their inbox through Telegram or browser.
 
 ## Core Requirements
 
 ### Functional Requirements
 1. **Email Generation** - Create random temporary email addresses using Mail.tm domains
-2. **Inbox Management** - View, read, and delete received emails
-3. **Real-time Notifications** - Push notifications when new emails arrive
-4. **Session Persistence** - Store user sessions across bot restarts
+2. **Inbox Management** - View received emails with sender, subject, preview
+3. **Real-time Notifications** - Background polling for new emails (Telegram)
+4. **Session Persistence** - SQLite for bot, LocalStorage for web
+5. **Dual Interface** - Same functionality via Telegram Bot and Web Browser
 
 ### Non-Functional Requirements
 1. **Async Architecture** - Non-blocking operations for scalability
 2. **Error Handling** - Graceful handling of API failures and rate limits
-3. **User Experience** - Inline buttons for easy interaction
+3. **User Experience** - Persistent keyboard buttons, instant actions
 
 ## Target Users
 - Developers needing test email addresses
@@ -22,7 +23,8 @@ A Telegram bot that provides temporary/disposable email addresses using the Mail
 - Anyone needing a quick disposable email
 
 ## Success Criteria
-- Bot successfully generates working email addresses
-- Emails are received and displayed correctly
-- Background notifications work reliably
-- User data persists across restarts
+- ✅ Bot successfully generates working email addresses
+- ✅ Emails are received and displayed correctly
+- ✅ Background notifications work reliably
+- ✅ User data persists across restarts
+- ✅ Web interface provides same core functionality

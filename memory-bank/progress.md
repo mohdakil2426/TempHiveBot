@@ -1,71 +1,92 @@
-# TempMail Bot - Progress
+# TempMail - Progress
 
 ## What Works ✅
 
-### Core Features
-- [x] `/start` - Welcome message with instructions
-- [x] `/help` - Command help
-- [x] `/new` - Generate new temporary email
-- [x] `/mymail` - Display current email address
-- [x] `/inbox` - View inbox with message list
-- [x] `/refresh` - Manually check for new emails
+### Telegram Bot
+- [x] `/start` - Auto-generates email on first use, shows welcome
+- [x] `/help` - Shows help information
+- [x] Persistent keyboard with "Generate New / Delete" and "Refresh" buttons
+- [x] "Generate New / Delete" - Deletes old email, creates new one instantly
+- [x] "Refresh" - Shows current email and inbox status
+- [x] "Open in Browser" - Shows toast with web URL
+- [x] Background polling for new emails (every 30 seconds)
+- [x] Notifications for new incoming emails
+- [x] SQLite session persistence across restarts
+- [x] Menu button with commands in Telegram
 
-### Inline Buttons
-- [x] Copy Email - Sends email as copyable message
-- [x] New Email - Generate fresh email
-- [x] Check Inbox - Navigate to inbox
-- [x] Read Message - View full email content
-- [x] Delete Message - Remove with confirmation
-- [x] Back to Inbox - Navigation
-
-### Background Features
-- [x] Auto-polling for new emails (every 30 seconds)
-- [x] Push notifications for new messages
-- [x] Token auto-refresh on expiry
+### Web Interface
+- [x] Auto-generate email on page load
+- [x] Beautiful dark theme with modern design
+- [x] Copy email to clipboard
+- [x] Generate new email button
+- [x] Refresh inbox button
+- [x] Auto-refresh every 10 seconds
+- [x] View email list with sender, subject, preview
+- [x] Read full email in modal
+- [x] Delete emails
+- [x] Session persistence in localStorage
+- [x] URL auth parameter for deep linking from bot
 
 ### Infrastructure
-- [x] SQLite database for session persistence
+- [x] Mail.tm API wrapper with retry logic
+- [x] SQLite database for Telegram sessions
 - [x] Error handling with user-friendly messages
-- [x] Rate limit handling with retries
+- [x] Rate limit handling
+- [x] Token refresh on expiry
+- [x] Auto port finding for web server
 
 ## What's Left to Build 🔧
 
 ### Nice-to-Have Features
-- [ ] `/deletemail` - Delete current email account
-- [ ] Attachment downloads
+- [ ] Deploy web to public URL
+- [ ] Real working "Open in Browser" button (needs public URL)
+- [ ] "Read Full" button in Telegram for email content
+- [ ] "Delete" button in Telegram for individual messages
 - [ ] Custom email username selection
-- [ ] Multiple email support per user
-- [ ] Email history/archive
+- [ ] Multiple emails per user
+- [ ] Email forwarding
 
 ### Improvements
 - [ ] Unit tests
 - [ ] Docker deployment
 - [ ] Webhook mode for production
 - [ ] Admin dashboard
+- [ ] Multi-language support
 
 ## Project Evolution
 
-### Initial Implementation (2025-12-28)
-- Started with aiohttp, switched to httpx for Windows compatibility
-- Upgraded python-telegram-bot from 21.0 to 22.5 for Python 3.13 support
-- Implemented all core features in single session
+### Session 1 (2025-12-28)
+- Initial implementation plan created
+- Mail.tm API wrapper built
+- Database layer implemented
+- All Telegram handlers created
+- Background notifier implemented
+- Switched from aiohttp to httpx (Windows compatibility)
+- Upgraded python-telegram-bot (Python 3.13 compatibility)
 
-### Design Decisions Made
-1. **httpx over aiohttp** - No C dependencies, easier Windows install
-2. **Polling over webhooks** - Works without public URL
-3. **SQLite over JSON** - Better concurrent access
-4. **Single email per user** - Simplicity first
+### Session 2 (2025-12-29)
+- Added web interface (HTML/CSS/JS)
+- Created simple HTTP server
+- Restructured bot for official TempMail style
+- Added persistent keyboard buttons
+- Fixed Markdown parsing issues (switched to plain text)
+- Fixed localhost URL in buttons (callback with toast)
+- Removed loading messages for instant feel
+- Updated memory bank
 
 ## Known Issues
 
 None currently. All features working as expected.
 
-## Metrics
+## File Summary
 
-| Metric | Value |
-|--------|-------|
-| Total Files | 15 |
-| Lines of Code | ~800 |
-| Dependencies | 4 |
-| Commands | 6 |
-| Inline Buttons | 8 |
+| Category | Files | Lines |
+|----------|-------|-------|
+| Bot Core | 4 | ~300 |
+| Handlers | 2 | ~200 |
+| Services | 2 | ~250 |
+| Database | 1 | ~140 |
+| Utils | 1 | ~60 |
+| Web | 3 | ~600 |
+| Config | 4 | ~30 |
+| **Total** | **17** | **~1580** |

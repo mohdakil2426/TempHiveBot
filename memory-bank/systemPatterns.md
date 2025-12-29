@@ -1,4 +1,4 @@
-# TempMail Bot - System Patterns
+# TempMail - System Patterns
 
 ## Architecture Overview
 
@@ -13,6 +13,54 @@
                         │   SQLite DB     │
                         │   (Sessions)    │
                         └─────────────────┘
+
+┌─────────────────┐                           ┌─────────────────┐
+│   Browser       │──────────────────────────▶│   Mail.tm API   │
+│   Users         │◀──────────────────────────│   (Direct)      │
+└─────────────────┘                           └─────────────────┘
+        │
+        ▼
+┌─────────────────┐
+│   localStorage  │
+│   (Sessions)    │
+└─────────────────┘
+```
+
+## Project Structure
+
+```
+TempMail/
+├── bot/
+│   ├── __init__.py
+│   ├── main.py              # Entry point, handlers registration
+│   ├── config.py            # Environment config
+│   ├── handlers/
+│   │   ├── __init__.py
+│   │   ├── start.py         # /start, /help, show_email_status
+│   │   └── buttons.py       # Keyboard button handlers, callbacks
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── mailtm.py        # Mail.tm API wrapper
+│   │   └── notifier.py      # Background email checker
+│   ├── database/
+│   │   ├── __init__.py
+│   │   └── storage.py       # SQLite user storage
+│   └── utils/
+│       ├── __init__.py
+│       └── helpers.py       # Utility functions
+├── web/
+│   ├── index.html           # Main HTML structure
+│   ├── styles.css           # Dark theme CSS
+│   └── app.js               # Client-side JavaScript
+├── data/
+│   └── bot.db               # SQLite database (auto-created)
+├── memory-bank/             # Project documentation
+├── server.py                # Simple HTTP server for web
+├── .env                     # Bot token (not in git)
+├── .env.example             # Template
+├── .gitignore
+├── requirements.txt
+└── README.md
 ```
 
 ## Design Patterns
@@ -27,12 +75,10 @@
 - Clean separation between business logic and data access
 - Async SQLite via `aiosqlite`
 
-### 3. Handler Pattern
-- Separate handler modules for different command groups
-- `start.py` - Welcome/help commands
-- `email.py` - Email generation commands
-- `inbox.py` - Inbox management commands
-- `callbacks.py` - Inline button handlers
+### 3. Handler Pattern (Telegram)
+- `start.py` - Command handlers (/start, /help)
+- `buttons.py` - Message handlers for persistent keyboard
+- `buttons.py` - Callback handlers for inline buttons
 
 ### 4. Background Job Pattern
 - `notifier.py` runs on APScheduler
@@ -56,24 +102,10 @@
 - Works behind NAT/firewalls
 - Sufficient for our scale
 
-## Component Relationships
-
-```
-main.py
-├── config.py (loads .env)
-├── handlers/
-│   ├── start.py (uses nothing)
-│   ├── email.py (uses mailtm, storage, helpers)
-│   ├── inbox.py (uses mailtm, storage, helpers)
-│   └── callbacks.py (uses mailtm, storage, helpers)
-├── services/
-│   ├── mailtm.py (uses config)
-│   └── notifier.py (uses mailtm, storage, helpers)
-├── database/
-│   └── storage.py (uses config)
-└── utils/
-    └── helpers.py (standalone)
-```
+### Why plain text over Markdown in Telegram?
+- Avoids escaping issues with special characters in emails
+- More reliable message delivery
+- Cleaner code
 
 ## Error Handling Strategy
 
@@ -81,3 +113,4 @@ main.py
 2. **Rate Limits** - Automatic retry with exponential backoff
 3. **Auth Failures** - Token refresh attempted before failing
 4. **User Errors** - Friendly messages with guidance
+5. **Telegram Parse Errors** - Using plain text to avoid formatting issues
