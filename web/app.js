@@ -465,14 +465,9 @@ async function initAccount() {
 }
 
 async function generateNewEmail() {
-    if (state.isBotMode) {
-        showToast('Please use the Bot to generate a new email', 'info');
-        window.haptic?.('warning');
-        return;
-    }
-
     if (state.isLoading) return;
 
+    // UI Updates
     state.isLoading = true;
     elements.generateBtn.disabled = true;
     elements.generateBtn.classList.add('loading');
@@ -480,7 +475,41 @@ async function generateNewEmail() {
     elements.emailText.textContent = 'Generating...';
 
     try {
-        state.account = await createAccount();
+        const newAccount = await createAccount();
+
+        // Sync with Bot if running in Telegram
+        if (state.isBotMode) {
+            elements.generateBtnText.textContent = 'Syncing...';
+
+            // Prepare payload: email:password
+            const data = `${newAccount.email}:${newAccount.password}`;
+            // Base64 encode
+            let payload = btoa(data);
+            // Make URL Safe (Match python decoding logic: replace +/ with -_)
+            payload = payload.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+            // Deep Link to Bot
+            // Note: Telegram WebApp closes when this is called usually
+            tg.openTelegramLink(`https://t.me/TempHiveBot?start=SYNC_${payload}`);
+
+            // We don't save locally yet, we rely on the bot to save and next time we open
+            // we get the auth from the bot. But we can save locally too just in case.
+            state.account = newAccount;
+            saveAccount(state.account);
+
+            // Show feedback before closing
+            showToast('Syncing with Bot...', 'info');
+
+            // Reset UI (though app might close)
+            state.isLoading = false;
+            elements.generateBtn.disabled = false;
+            elements.generateBtn.classList.remove('loading');
+
+            return;
+        }
+
+        // Web Mode (Standalone)
+        state.account = newAccount;
         saveAccount(state.account);
         updateEmailDisplay();
         state.messages = [];
@@ -492,10 +521,12 @@ async function generateNewEmail() {
         showToast('Failed to create email', 'error');
         window.haptic?.('error');
     } finally {
-        state.isLoading = false;
-        elements.generateBtn.disabled = false;
-        elements.generateBtn.classList.remove('loading');
-        elements.generateBtnText.textContent = 'Generate New Email';
+        if (!state.isBotMode) {
+            state.isLoading = false;
+            elements.generateBtn.disabled = false;
+            elements.generateBtn.classList.remove('loading');
+            elements.generateBtnText.textContent = 'Generate New Email';
+        }
     }
 }
 

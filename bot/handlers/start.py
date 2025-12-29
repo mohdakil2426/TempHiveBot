@@ -132,6 +132,68 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     """Handle the /start command - Auto-generate email and show status."""
     user_id = update.effective_user.id
     logger.info(f"Start command from user {user_id}")
+
+    # Check for Sync Start Parameter
+    if context.args and context.args[0].startswith("SYNC_"):
+        logger.info("Received Sync request from Mini App")
+        try:
+            # Format: SYNC_Base64(email:password)
+            payload = context.args[0][5:]
+            # Ensure padding if needed (though standard b64 usually fine, urlsafe might need it)
+            # JS btoa uses +/, so we replace to urlsafe standard if we want, or just receive as is.
+            # Our valid chars are usually just alphanumeric + @.
+            # Python's urlsafe_b64decode expects -_ but can handle standard if validated.
+            # However, JS btoa produces +/ (standard base64).
+            # Let's handle standard base64 decoding.
+            # We must fix padding.
+            padding = len(payload) % 4
+            if padding:
+                payload += "=" * (4 - padding)
+            
+            # Replace -_ with +/ just in case it came as urlsafe, or vice versa.
+            # Actually, standardizing: replace - with + and _ with / to process as standard b64
+            payload = payload.replace('-', '+').replace('_', '/')
+            
+            decoded = base64.b64decode(payload).decode()
+            email, password = decoded.split(":")
+            
+            # Verify and get token
+            auth = await mailtm_service.get_token(email, password)
+            token = auth["token"]
+            
+            # Get Account ID (needed for DB schema)
+            account_info = await mailtm_service.get_account(token)
+            account_id = account_info["id"] # Assuming API returns id usually
+            if not account_id:
+                 # Fallback if /me doesn't return id (it generally does)
+                 # We can search accounts? No.
+                 # Actually creates_account returns ID. /me returns ID.
+                 account_id = account_info.get("id", "unknown")
+
+            # Update Session
+            session = UserSession(
+                telegram_id=user_id,
+                email=email,
+                password=password,
+                token=token,
+                account_id=account_id
+            )
+            await storage.save_user(session)
+            
+            await update.message.reply_text(
+                f"✅ <b>Synced!</b>\n\nActive email updated to: {email}",
+                parse_mode="HTML",
+                reply_markup=get_persistent_keyboard()
+            )
+            
+            # Show status immediately
+            await show_email_status(update.message, session, context)
+            return
+
+        except Exception as e:
+            logger.error(f"Sync failed: {e}")
+            await update.message.reply_text("❌ Sync failed. Please try again or generate a new email here.")
+            # Fallthrough to normal start
     
     # Check if user already has an email
     session = await storage.get_user(user_id)
