@@ -218,6 +218,37 @@ html.dark .icon-btn-ghost {
     text-overflow: ellipsis;
 }
 
+/* Copy Button / Action Button */
+.action-btn {
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: var(--accent-soft);
+    border-radius: 12px;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s var(--spring);
+    flex-shrink: 0;
+}
+
+.action-btn:hover {
+    background: var(--accent);
+    color: white;
+    transform: scale(1.05);
+}
+
+.action-btn:active {
+    transform: scale(0.92);
+}
+
+.action-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
 /* Big Action Button */
 .actions-grid {
     padding: 0 20px;

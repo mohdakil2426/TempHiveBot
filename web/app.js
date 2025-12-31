@@ -278,7 +278,15 @@ function navigateTo(page) {
 
 function updateEmailDisplay() {
     if (!elements.emailText) return;
-    elements.emailText.textContent = state.account?.email || 'Generating...';
+    if (state.isLoading) {
+        elements.emailText.textContent = 'Generating...';
+    } else if (state.account?.email) {
+        elements.emailText.textContent = state.account.email;
+    } else {
+        elements.emailText.textContent = 'Tap to retry';
+        elements.emailText.style.cursor = 'pointer';
+        elements.emailText.onclick = () => generateNewEmail();
+    }
 }
 
 function updateInboxCount(count) {
@@ -370,13 +378,12 @@ async function generateNewEmail() {
     if (state.isLoading) return;
     state.isLoading = true;
     if (elements.generateBtn) elements.generateBtn.classList.add('loading');
-    if (elements.emailText) elements.emailText.textContent = 'Generating...';
+    updateEmailDisplay(); // Shows 'Generating...' because isLoading is true
 
     try {
         const newAccount = await createAccount();
         state.account = newAccount;
         saveAccount(state.account);
-        updateEmailDisplay();
         state.messages = [];
         renderInbox();
         showToast('New Identity Created', 'success');
@@ -385,11 +392,14 @@ async function generateNewEmail() {
         if (state.notificationsEnabled && state.isBotMode) syncToBot(newAccount);
 
     } catch (error) {
-        showToast('Failed to generate', 'error');
+        console.error('Failed to generate email:', error);
+        showToast('Failed to generate. Tap email to retry.', 'error');
         window.haptic?.('error');
+        state.account = null; // Clear any partial state
     } finally {
         state.isLoading = false;
         if (elements.generateBtn) elements.generateBtn.classList.remove('loading');
+        updateEmailDisplay(); // Update with final state (email or error)
     }
 }
 
@@ -410,13 +420,32 @@ async function loadInbox() {
 }
 
 async function copyEmail() {
-    if (!state.account) return;
+    if (!state.account?.email) {
+        showToast('No email to copy yet', 'error');
+        window.haptic?.('error');
+        return;
+    }
     try {
-        await navigator.clipboard.writeText(state.account.email);
+        // Try modern clipboard API first
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(state.account.email);
+        } else {
+            // Fallback for non-HTTPS or older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = state.account.email;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+        }
         showToast('Copied to clipboard', 'success');
         window.haptic?.('light');
     } catch (e) {
-        // fallback?
+        console.error('Copy failed:', e);
+        showToast('Failed to copy', 'error');
+        window.haptic?.('error');
     }
 }
 
